@@ -1,7 +1,7 @@
 """Behna Archive Virtual Lab — observability dashboard + run controls (FastAPI)."""
-import os, subprocess, json
+import os, subprocess, json, io, zipfile
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg2.extras import RealDictCursor, Json
 import core, personas
@@ -94,6 +94,50 @@ def api_doc(filename: str):
     return q("SELECT filename, doc_type, sender, recipient, creation_date, origin, "
              "languages, summary, transcription, translation FROM lab.behna_chunks "
              "WHERE filename=%s LIMIT 1", (filename,), one=True) or {}
+
+
+# ---------- Artifact Downloads ----------
+def _artifact_filename(a):
+    """Generate a clean filename for an artifact."""
+    kind = (a.get('kind') or 'artifact').replace(' ', '_')
+    title = (a.get('title') or 'untitled').replace(' ', '_').replace('/', '-')[:60]
+    return f"{kind}_{title}.md"
+
+
+@app.get("/api/runs/{rid}/artifacts/{aid}/download")
+def download_artifact(rid: int, aid: int):
+    a = q("SELECT id, kind, title, version, approved, content FROM lab.artifacts "
+          "WHERE run_id=%s AND id=%s", (rid, aid), one=True)
+    if not a:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    content = (a['content'] or '').encode('utf-8')
+    fname = _artifact_filename(a)
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type='text/markdown',
+        headers={'Content-Disposition': f'attachment; filename="{fname}"'}
+    )
+
+
+@app.get("/api/runs/{rid}/artifacts/download-all")
+def download_all_artifacts(rid: int):
+    arts = q("SELECT id, kind, title, version, approved, content "
+             "FROM lab.artifacts WHERE run_id=%s ORDER BY id ASC", (rid,))
+    if not arts:
+        return JSONResponse({"error": "no artifacts"}, status_code=404)
+    run = q("SELECT topic FROM lab.runs WHERE id=%s", (rid,), one=True)
+    topic_slug = (run['topic'] or 'run')[:40].replace(' ', '_').replace('/', '-')
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for i, a in enumerate(arts, 1):
+            fname = f"{i:02d}_{_artifact_filename(a)}"
+            zf.writestr(fname, a['content'] or '')
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type='application/zip',
+        headers={'Content-Disposition': f'attachment; filename="behna_lab_{topic_slug}.zip"'}
+    )
 
 
 @app.get("/", response_class=HTMLResponse)

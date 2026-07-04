@@ -136,6 +136,17 @@
     padding:16px;background:var(--panel3);border-radius:var(--radius);max-height:60vh;overflow-y:auto}
   .closex{float:right;background:none;color:var(--muted);font-size:22px;padding:0;line-height:1;cursor:pointer}
   .closex:hover{color:var(--ink)}
+
+  /* Download controls */
+  .dl-all{display:block;width:100%;padding:10px;margin-bottom:14px;background:var(--panel3);border:1px solid var(--border);
+    border-radius:var(--radius);color:var(--accent2);font-size:12px;font-weight:600;text-align:center;cursor:pointer;transition:.15s;text-decoration:none}
+  .dl-all:hover{background:var(--panel2);border-color:var(--accent2)}
+  .art-row{display:flex;align-items:stretch;gap:0;margin-bottom:8px}
+  .art-row .art{flex:1;margin-bottom:0;border-radius:var(--radius) 0 0 var(--radius);border-right:none}
+  .art-row .dl-btn{display:flex;align-items:center;justify-content:center;width:40px;
+    background:var(--panel3);border:1px solid var(--border);border-radius:0 var(--radius) var(--radius) 0;
+    color:var(--accent2);font-size:14px;cursor:pointer;transition:.15s;text-decoration:none}
+  .art-row .dl-btn:hover{background:var(--accent2);color:#fff}
 </style>
 </head>
 <body>
@@ -200,6 +211,7 @@
   <!-- RIGHT: ARTIFACTS -->
   <div class="col col-right">
     <div class="stitle">Artifacts</div>
+    <a class="dl-all" id="dlAllBtn" style="display:none" onclick="downloadAll()">&#11015; Download All (ZIP)</a>
     <div id="artifacts"><div class="empty-state" style="margin-top:40px">No artifacts yet.</div></div>
   </div>
 </div>
@@ -338,11 +350,24 @@ async function refreshArtifacts(){
   if(!activeRun)return;
   const arts=await jget(`/api/runs/${activeRun}/artifacts`);
   const el=document.getElementById('artifacts');
-  if(!arts.length){el.innerHTML='<div class="empty-state" style="margin-top:40px">No artifacts yet.</div>';return;}
-  el.innerHTML=arts.map(a=>`<div class="art" onclick='openArtifact(${a.id})'>
-     <div class="k">${escapeHtml(a.kind)}${a.approved?'<span class="approved-tag">approved</span>':''}</div>
-     <div class="t">${escapeHtml(a.title)}</div></div>`).join('');
+  const dlBtn=document.getElementById('dlAllBtn');
+  if(!arts.length){
+    el.innerHTML='<div class="empty-state" style="margin-top:40px">No artifacts yet.</div>';
+    dlBtn.style.display='none';return;
+  }
+  dlBtn.style.display='block';
+  el.innerHTML=arts.map(a=>`<div class="art-row">
+    <div class="art" onclick='openArtifact(${a.id})'>
+      <div class="k">${escapeHtml(a.kind)}${a.approved?'<span class="approved-tag">approved</span>':''}</div>
+      <div class="t">${escapeHtml(a.title)}</div>
+    </div>
+    <a class="dl-btn" href="/api/runs/${activeRun}/artifacts/${a.id}/download" title="Download">&#8681;</a>
+  </div>`).join('');
   window._arts={}; arts.forEach(a=>window._arts[a.id]=a);
+}
+function downloadAll(){
+  if(!activeRun)return;
+  window.location.href=`/api/runs/${activeRun}/artifacts/download-all`;
 }
 function openArtifact(id){
   const a=window._arts[id];if(!a)return;
