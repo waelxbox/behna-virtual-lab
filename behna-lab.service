@@ -1,0 +1,15 @@
+[Unit]
+Description=Behna Archive Virtual Lab dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/behna_lab
+ExecStart=/home/ubuntu/behna_lab/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
