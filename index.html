@@ -1,396 +1,660 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Behna Archive Virtual Lab</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Behna Virtual Lab</title>
 <style>
-  :root{
-    --bg:#0c0e12; --panel:#13161d; --panel2:#191d26; --panel3:#1e2330;
-    --border:#272d3a; --border2:#333a4a;
-    --ink:#e8eaf0; --muted:#8b95a8; --dim:#5c6578;
-    --accent:#d4a843; --accent2:#5b8def; --green:#4fae8b; --red:#e06565;
-    --candidate:#6b9cf5; --advisor:#d4a843; --peer:#d97070; --system:#6f7787; --retrieval:#4fae8b;
-    --radius:10px; --radius-sm:6px;
-    --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-    --font-serif:'Iowan Old Style','Palatino Linotype',Georgia,serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;overflow:hidden}
-  body{font-family:var(--font-sans);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+:root{
+  --ink-0:#081012;--ink-1:#0d1719;--ink-2:#122023;--ink-3:#192a2d;
+  --line:rgba(222,212,183,.13);--line-strong:rgba(222,212,183,.23);
+  --paper:#f1ead9;--paper-2:#d8cdb4;--muted:#8f9b98;
+  --gold:#d9ae61;--gold-soft:#f1d99f;--lapis:#6aa9ff;--teal:#62d5bf;--coral:#ed8f7d;--violet:#af9df4;
+  --shadow:0 30px 70px rgba(0,0,0,.34);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{min-height:100vh;color:var(--paper);background:radial-gradient(circle at 78% 4%,rgba(79,129,125,.12),transparent 28rem),linear-gradient(135deg,#071012,#0b1315 54%,#081012);font:14px/1.5 var(--sans)}
+button,input,textarea,select{font:inherit;color:inherit}
 
-  /* ===== HEADER ===== */
-  header{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;
-    border-bottom:1px solid var(--border);background:var(--panel);height:52px}
-  header h1{font-size:16px;font-weight:600;letter-spacing:.3px}
-  header h1 span{color:var(--accent);font-weight:700}
-  .hstats{font-size:11px;color:var(--muted)}
+/* Shell */
+.shell{display:grid;grid-template-columns:238px minmax(0,1fr);min-height:100vh}
 
-  /* ===== LAYOUT ===== */
-  .app{display:grid;grid-template-columns:340px 1fr 380px;height:calc(100vh - 52px)}
-  .col{overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-  .col::-webkit-scrollbar{width:6px}.col::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-  .col-left{background:var(--panel);border-right:1px solid var(--border)}
-  .col-right{background:var(--panel);border-left:1px solid var(--border)}
+/* Sidebar */
+.sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:24px 18px 18px;border-right:1px solid var(--line);background:linear-gradient(rgba(8,16,18,.92),rgba(8,16,18,.96)),repeating-linear-gradient(0deg,transparent 0 5px,rgba(255,255,255,.018) 5px 6px);overflow-y:auto}
+.brand{display:flex;align-items:center;gap:12px;padding:2px 7px 24px;border-bottom:1px solid var(--line)}
+.brand-mark{width:40px;aspect-ratio:1;position:relative;display:grid;place-items:center;border:1px solid rgba(217,174,97,.55);border-radius:50% 50% 48% 52%;background:linear-gradient(145deg,rgba(217,174,97,.18),rgba(217,174,97,.02));box-shadow:inset 0 0 0 4px rgba(217,174,97,.04),0 8px 24px rgba(0,0,0,.28);color:var(--gold);font:700 18px/1 var(--serif)}
+.brand-mark::after{content:"";position:absolute;width:3px;height:3px;border-radius:50%;background:var(--gold);box-shadow:0 -15px var(--gold),0 15px var(--gold),15px 0 var(--gold),-15px 0 var(--gold);opacity:.68}
+.brand-copy strong{display:block;letter-spacing:.01em;font-size:14px}
+.brand-copy span{color:var(--muted);font:11px/1.2 var(--serif);letter-spacing:.06em}
+.eyebrow{margin:25px 8px 9px;color:#63716f;font-size:9px;font-weight:800;letter-spacing:.19em;text-transform:uppercase}
+.nav{display:grid;gap:4px}
+.nav button{width:100%;display:flex;align-items:center;gap:11px;padding:10px 11px;border:1px solid transparent;border-radius:9px;background:transparent;text-align:left;cursor:pointer;color:#8b9996;transition:.18s ease}
+.nav button:hover{color:var(--paper);background:rgba(255,255,255,.035)}
+.nav button.active{color:var(--gold-soft);border-color:rgba(217,174,97,.14);background:linear-gradient(90deg,rgba(217,174,97,.12),rgba(217,174,97,.025))}
+.nav svg{width:17px;height:17px;stroke-width:1.7;flex-shrink:0}
+.nav .count{margin-left:auto;padding:1px 7px;border-radius:20px;color:var(--teal);background:rgba(98,213,191,.09);font-size:10px;font-weight:700}
+.sidebar-foot{margin-top:auto}
+.corpus-mini{padding:14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025)}
+.corpus-mini .row{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
+.corpus-mini strong{color:var(--paper);font-variant-numeric:tabular-nums}
+.progress{height:4px;overflow:hidden;margin:10px 0 8px;border-radius:4px;background:#1d2b2c}
+.progress i{display:block;width:100%;height:100%;background:linear-gradient(90deg,var(--gold),var(--teal))}
+.sys{display:flex;align-items:center;gap:7px;margin-top:14px;color:#6f7c79;font-size:10px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 4px rgba(98,213,191,.08),0 0 12px rgba(98,213,191,.58)}
 
-  /* ===== SECTION TITLES ===== */
-  .stitle{font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--dim);margin-bottom:12px;font-weight:600}
+/* Main */
+main{min-width:0;display:flex;flex-direction:column}
+.topbar{height:70px;display:flex;align-items:center;gap:18px;padding:0 30px;border-bottom:1px solid var(--line);background:rgba(8,16,18,.68);backdrop-filter:blur(18px);flex-shrink:0}
+.crumbs{min-width:0;color:#7f8d8a;font-size:12px}
+.crumbs span{margin:0 7px;color:#3e4a48}
+.crumbs strong{color:var(--paper-2);font-weight:600}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:9px}
+.ghost-btn,.primary-btn{border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.025);cursor:pointer;transition:.18s ease;padding:9px 13px;font-size:12px}
+.ghost-btn{color:#aab5b2}
+.ghost-btn:hover{border-color:var(--line-strong);background:rgba(255,255,255,.05);color:var(--paper)}
+.primary-btn{border-color:rgba(217,174,97,.4);background:linear-gradient(135deg,#dbb365,#bd8736);color:#1a140a;font-weight:800;box-shadow:0 8px 22px rgba(190,137,54,.14)}
+.primary-btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
 
-  /* ===== TABS ===== */
-  .tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)}
-  .tab{padding:8px 14px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
-  .tab:hover{color:var(--ink)}.tab.active{color:var(--accent);border-color:var(--accent)}
+.page{padding:29px 30px 48px;overflow-y:auto;flex:1}
 
-  /* ===== FORMS ===== */
-  label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;margin-top:14px}
-  label:first-child{margin-top:0}
-  textarea,input[type="text"],input[type="number"],select{
-    width:100%;background:var(--panel3);border:1px solid var(--border);color:var(--ink);
-    border-radius:var(--radius-sm);padding:10px 12px;font-family:var(--font-sans);font-size:13px;
-    line-height:1.55;resize:vertical;transition:.15s}
-  textarea:focus,input:focus{outline:none;border-color:var(--accent2);box-shadow:0 0 0 2px rgba(91,141,239,.15)}
-  textarea{min-height:100px}
-  textarea.tall{min-height:160px}
-  textarea.short{min-height:60px}
-  .peer-lens{position:relative;margin-bottom:8px}
-  .peer-lens textarea{min-height:50px;padding-right:36px}
-  .peer-lens .rm{position:absolute;top:6px;right:6px;background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;opacity:.5}
-  .peer-lens .rm:hover{opacity:1}
-  .add-lens{font-size:12px;color:var(--accent2);cursor:pointer;display:inline-block;margin-top:4px}
-  .add-lens:hover{text-decoration:underline}
-  .form-row{display:flex;gap:12px}
-  .form-row>*{flex:1}
+/* Intro */
+.intro{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px}
+.intro .kicker{color:var(--gold);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+.intro h1{margin:7px 0 7px;font:500 clamp(26px,3vw,38px)/1.1 var(--serif);letter-spacing:-.02em}
+.intro p{max-width:720px;margin:0;color:var(--muted);font-size:13px}
+.date-card{flex:none;text-align:right}
+.date-card b{display:block;color:var(--paper-2);font:20px/1.1 var(--serif)}
+.date-card span{color:#667370;font-size:10px;letter-spacing:.13em;text-transform:uppercase}
 
-  /* ===== BUTTONS ===== */
-  button{cursor:pointer;border:none;border-radius:var(--radius-sm);padding:9px 14px;font-family:var(--font-sans);font-size:13px;font-weight:500;transition:.12s}
-  .btn-launch{background:var(--accent);color:#1a1303;font-weight:700;width:100%;margin-top:18px;padding:12px;border-radius:var(--radius);font-size:14px}
-  .btn-launch:hover{filter:brightness(1.1)}
-  .btn-launch:disabled{opacity:.4;cursor:not-allowed}
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.metric{position:relative;min-height:118px;padding:18px;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.015));box-shadow:0 14px 30px rgba(0,0,0,.12)}
+.metric::before{content:"";position:absolute;top:0;right:0;width:86px;height:86px;transform:translate(34px,-38px) rotate(35deg);border:1px solid currentColor;border-radius:50%;opacity:.08}
+.metric-label{display:flex;justify-content:space-between;color:#74817f;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.metric-value{margin-top:14px;font:500 28px/1 var(--serif)}
+.metric-note{display:flex;align-items:center;gap:5px;margin-top:9px;color:#778481;font-size:10px}
+.metric-note em{color:var(--teal);font-style:normal}
+.metric.gold{color:var(--gold)}.metric.blue{color:var(--lapis)}.metric.green{color:var(--teal)}.metric.red{color:var(--coral)}
 
-  /* ===== RUN LIST ===== */
-  .runlist{margin-top:20px}
-  .runcard{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s}
-  .runcard:hover{border-color:var(--accent2);background:var(--panel3)}
-  .runcard.active{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
-  .runcard .topic{font-size:13px;line-height:1.4;margin-bottom:6px;color:var(--ink)}
-  .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
-  .badge.running{background:#16361f;color:#5fd08a}.badge.completed{background:#1d2b46;color:#7fa6f0}
-  .badge.paused{background:#3a3416;color:#e0c95f}.badge.created{background:#2a2f3a;color:var(--muted)}
-  .badge.error,.badge.stopped{background:#3a1d1d;color:#e08585}
+/* Phase panel */
+.phase-panel{margin-bottom:18px;padding:18px 20px 17px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.02)}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:15px}
+.section-head h2{margin:0;color:var(--paper-2);font-size:12px;letter-spacing:.02em}
+.section-head .meta{color:#65726f;font-size:10px}
+.live{display:inline-flex;align-items:center;gap:7px;margin-left:8px;color:var(--teal);font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.phases{display:grid;grid-template-columns:repeat(6,1fr)}
+.phase{position:relative;display:grid;grid-template-columns:30px 1fr;gap:9px;align-items:center;min-width:0;cursor:pointer}
+.phase:not(:last-child)::after{content:"";position:absolute;top:14px;left:30px;right:0;height:1px;background:var(--line)}
+.phase.done:not(:last-child)::after{background:linear-gradient(90deg,var(--teal),rgba(98,213,191,.23))}
+.phase-node{position:relative;z-index:1;width:29px;height:29px;display:grid;place-items:center;border:1px solid var(--line-strong);border-radius:50%;background:var(--ink-1);color:#687472;font-size:10px;font-weight:800}
+.phase.done .phase-node{border-color:rgba(98,213,191,.4);color:var(--teal);background:#102522}
+.phase.current .phase-node{border-color:var(--gold);color:#261b08;background:var(--gold);box-shadow:0 0 0 5px rgba(217,174,97,.09),0 0 22px rgba(217,174,97,.17)}
+.phase-copy{position:relative;z-index:2;min-width:0;padding-right:7px;background:linear-gradient(90deg,var(--ink-1) 82%,transparent)}
+.phase-copy b{display:block;overflow:hidden;color:#9ba6a3;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.phase-copy span{color:#586462;font-size:9px}
+.phase.current .phase-copy b{color:var(--gold-soft)}
 
-  /* ===== CENTER: TIMELINE ===== */
-  .center-head{padding:16px 24px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .phases{display:flex;gap:4px;flex-wrap:wrap}
-  .pchip{font-size:10px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);color:var(--muted);font-weight:500}
-  .pchip.done{background:#16361f;color:#5fd08a;border-color:#1f5230}
-  .pchip.cur{background:var(--accent);color:#1a1303;border-color:var(--accent);font-weight:700}
-  .live-dot{font-size:10px;color:#5fd08a;animation:pulse 1.5s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* Dashboard grid */
+.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(290px,.75fr);gap:18px}
+.panel{border:1px solid var(--line);border-radius:15px;background:linear-gradient(150deg,rgba(255,255,255,.025),rgba(255,255,255,.012));box-shadow:var(--shadow)}
+.panel-top{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.panel-top h2{margin:0;font-size:12px}
+.panel-top p{margin:2px 0 0;color:#687572;font-size:10px}
+.panel-top .spacer{margin-left:auto}
+.filter-pill{padding:5px 9px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.02);color:#82908d;font-size:9px;cursor:pointer}
 
-  .controls{display:flex;gap:8px;padding:12px 24px 0}
-  .controls button{flex:1;font-size:12px;padding:7px 10px}
-  .b-run{background:#1f5230;color:#bfe9cf}.b-run:hover{background:#256b3d}
-  .b-pause{background:#5a5113;color:#f0e09a}.b-pause:hover{background:#6b6118}
-  .b-stop{background:#5a2020;color:#f0b0b0}.b-stop:hover{background:#6b2828}
+/* Activity feed */
+.feed{padding:2px 18px 6px;max-height:600px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.feed::-webkit-scrollbar{width:5px}.feed::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.event{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:17px 0}
+.event:not(:last-child){border-bottom:1px solid rgba(222,212,183,.08)}
+.avatar{width:32px;height:32px;display:grid;place-items:center;border:1px solid currentColor;border-radius:10px;background:rgba(255,255,255,.025);font:700 12px/1 var(--serif)}
+.event.candidate .avatar,.event.candidate .agent{color:var(--lapis)}
+.event.advisor .avatar,.event.advisor .agent{color:var(--gold)}
+.event.peer .avatar,.event.peer .agent{color:var(--coral)}
+.event.system .avatar,.event.system .agent{color:var(--muted)}
+.event[data-kind="retrieval"] .avatar,.event[data-kind="retrieval"] .agent{color:var(--teal)}
+.event-head{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.agent{font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}
+.event-title{color:var(--paper-2);font-size:11px;font-weight:700}
+.time{margin-left:auto;color:#56615f;font-size:9px}
+.event .body{margin:0;color:#a3aeab;font:13px/1.63 var(--serif);white-space:pre-wrap;max-height:200px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.event .body::-webkit-scrollbar{width:4px}.event .body::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{padding:4px 8px;border:1px solid rgba(98,213,191,.18);border-radius:5px;background:rgba(98,213,191,.045);color:#7dcdbf;font:9px/1 var(--sans);cursor:pointer;transition:.14s}
+.chip:hover{background:rgba(98,213,191,.12);border-color:rgba(98,213,191,.4)}
+.approved-badge{padding:3px 7px;border-radius:5px;background:rgba(98,213,191,.1);color:var(--teal);font-size:8px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;margin-left:8px}
+.rejected-badge{padding:3px 7px;border-radius:5px;background:rgba(237,143,125,.1);color:var(--coral);font-size:8px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;margin-left:8px}
+.composer{margin:8px 18px 18px 64px;padding:11px;border:1px dashed var(--line-strong);border-radius:9px;color:#66726f;font:11px var(--serif);display:none}
+.composer .typing{display:inline-flex;gap:3px;margin-right:7px}
+.composer .typing i{width:4px;height:4px;border-radius:50%;background:var(--gold);animation:bounce 1.2s infinite}
+.composer .typing i:nth-child(2){animation-delay:.12s}
+.composer .typing i:nth-child(3){animation-delay:.24s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-3px);opacity:1}}
 
-  #timeline{padding:16px 24px;overflow-y:auto;flex:1}
-  .col-center{display:flex;flex-direction:column;overflow:hidden}
+/* Right stack */
+.right-stack{display:grid;gap:18px;align-content:start}
+.research-card{position:relative;overflow:hidden;padding:19px}
+.research-card::after{content:"BH";position:absolute;right:-10px;bottom:-40px;color:rgba(217,174,97,.045);font:130px/1 var(--serif)}
+.research-card .label{color:var(--gold);font-size:9px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+.research-card h3{max-width:330px;margin:10px 0 9px;font:500 20px/1.24 var(--serif)}
+.research-card p{margin:0;color:#82908d;font-size:11px}
+.research-meta{display:flex;gap:18px;margin-top:17px}
+.research-meta div{padding-left:10px;border-left:1px solid var(--line-strong)}
+.research-meta div b{display:block;color:var(--paper-2);font-size:12px}
+.research-meta div span{color:#5e6b68;font-size:9px}
 
-  .event{border-left:3px solid var(--system);background:var(--panel2);border-radius:0 var(--radius) var(--radius) 0;
-    padding:14px 18px;margin-bottom:12px}
-  .event.candidate{border-color:var(--candidate)}.event.advisor{border-color:var(--advisor)}
-  .event.peer{border-color:var(--peer)}.event.system{border-color:var(--system)}
-  .event[data-kind="retrieval"]{border-color:var(--retrieval)}
-  .ehead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .who{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
-  .who.candidate{color:var(--candidate)}.who.advisor{color:var(--advisor)}.who.peer{color:var(--peer)}.who.system{color:var(--muted)}
-  .etime{font-size:10px;color:var(--dim)}
-  .etitle{font-size:14px;font-weight:600;margin-bottom:8px;color:#f5f0e5}
-  .ebody{font-size:13px;line-height:1.65;color:#c8cdd8;white-space:pre-wrap;
-    max-height:300px;overflow-y:auto;padding:10px 12px;background:var(--panel3);border-radius:var(--radius-sm);
-    scrollbar-width:thin;scrollbar-color:var(--border) transparent;font-family:var(--font-serif)}
-  .ebody::-webkit-scrollbar{width:5px}.ebody::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-  .gate{font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;margin-left:10px;text-transform:uppercase}
-  .gate.ok{background:#16361f;color:#5fd08a}.gate.no{background:#3a1d1d;color:#e08585}
-  .docids{margin-top:8px}
-  .docids a{color:var(--retrieval);font-size:11px;margin-right:10px;text-decoration:none;border-bottom:1px dotted var(--retrieval);cursor:pointer}
-  .docids a:hover{color:#7ff5c0}
-  .empty-state{color:var(--muted);text-align:center;margin-top:80px;font-size:14px;line-height:1.7}
+.agents-panel{padding:17px 18px 10px}
+.agents-panel h3{margin:0 0 13px;color:#99a4a1;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.agent-row{display:grid;grid-template-columns:29px minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 0;border-top:1px solid rgba(222,212,183,.07)}
+.agent-row:first-of-type{border-top:0}
+.tiny-avatar{width:27px;height:27px;display:grid;place-items:center;border-radius:8px;background:#182527;color:var(--paper-2);font:10px var(--serif)}
+.agent-row b{display:block;color:#c9c2b2;font-size:10px}
+.agent-row small{display:block;color:#5f6c69;font-size:8px}
+.status{width:7px;height:7px;border-radius:50%;background:#3b4745}
+.status.on{background:var(--teal);box-shadow:0 0 8px rgba(98,213,191,.55)}
+.status.think{background:var(--gold);box-shadow:0 0 8px rgba(217,174,97,.48)}
 
-  /* ===== RIGHT: ARTIFACTS ===== */
-  .art{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s}
-  .art:hover{border-color:var(--accent);background:var(--panel3)}
-  .art .k{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:4px}
-  .art .t{font-size:13px;color:var(--ink)}
-  .art .approved-tag{font-size:9px;background:#16361f;color:#5fd08a;padding:2px 6px;border-radius:3px;margin-left:6px}
+.artifacts-panel{padding:17px 18px}
+.artifacts-panel h3{margin:0 0 13px;color:#99a4a1;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.artifact{display:grid;grid-template-columns:33px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;margin-top:7px;border:1px solid rgba(222,212,183,.08);border-radius:9px;background:rgba(255,255,255,.016);cursor:pointer;transition:.16s ease}
+.artifact:hover{border-color:rgba(217,174,97,.3);background:rgba(217,174,97,.04);transform:translateX(2px)}
+.doc-icon{width:31px;height:35px;display:grid;place-items:center;border:1px solid rgba(217,174,97,.23);border-radius:6px;background:rgba(217,174,97,.04);color:var(--gold)}
+.doc-icon svg{width:14px;height:14px}
+.artifact b{display:block;overflow:hidden;color:#bdb5a4;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.artifact span{color:#5f6c69;font-size:8px}
+.artifact .ver{color:#7c8986;font-size:8px}
+.dl-all-btn{display:block;margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.02);color:var(--lapis);font-size:11px;font-weight:600;text-align:center;cursor:pointer;transition:.16s;text-decoration:none}
+.dl-all-btn:hover{background:rgba(106,169,255,.06);border-color:rgba(106,169,255,.3)}
 
-  /* ===== MODAL ===== */
-  .modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(3px)}
-  .modal.show{display:flex}
-  .sheet{background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:820px;width:94%;max-height:86vh;overflow:auto;padding:28px 32px;
-    scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-  .sheet::-webkit-scrollbar{width:6px}.sheet::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-  .sheet h3{margin:0 0 6px;color:var(--accent);font-size:18px}
-  .sheet .meta{font-size:12px;color:var(--muted);margin-bottom:16px}
-  .sheet .body{white-space:pre-wrap;line-height:1.7;font-size:14px;color:#d7dbe4;font-family:var(--font-serif);
-    padding:16px;background:var(--panel3);border-radius:var(--radius);max-height:60vh;overflow-y:auto}
-  .closex{float:right;background:none;color:var(--muted);font-size:22px;padding:0;line-height:1;cursor:pointer}
-  .closex:hover{color:var(--ink)}
+/* Empty state */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);font:14px/1.7 var(--serif)}
 
-  /* Download controls */
-  .dl-all{display:block;width:100%;padding:10px;margin-bottom:14px;background:var(--panel3);border:1px solid var(--border);
-    border-radius:var(--radius);color:var(--accent2);font-size:12px;font-weight:600;text-align:center;cursor:pointer;transition:.15s;text-decoration:none}
-  .dl-all:hover{background:var(--panel2);border-color:var(--accent2)}
-  .art-row{display:flex;align-items:stretch;gap:0;margin-bottom:8px}
-  .art-row .art{flex:1;margin-bottom:0;border-radius:var(--radius) 0 0 var(--radius);border-right:none}
-  .art-row .dl-btn{display:flex;align-items:center;justify-content:center;width:40px;
-    background:var(--panel3);border:1px solid var(--border);border-radius:0 var(--radius) var(--radius) 0;
-    color:var(--accent2);font-size:14px;cursor:pointer;transition:.15s;text-decoration:none}
-  .art-row .dl-btn:hover{background:var(--accent2);color:#fff}
+/* Modal */
+.modal{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:24px;background:rgba(3,7,8,.72);backdrop-filter:blur(12px)}
+.modal.open{display:grid}
+.modal-card{width:min(720px,100%);max-height:min(760px,90vh);overflow:auto;border:1px solid var(--line-strong);border-radius:16px;background:#101a1c;box-shadow:0 40px 100px rgba(0,0,0,.55);scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.modal-card::-webkit-scrollbar{width:6px}.modal-card::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.modal-head{display:flex;align-items:center;padding:17px 19px;border-bottom:1px solid var(--line)}
+.modal-head h2{margin:0;font:18px var(--serif)}
+.close{margin-left:auto;border:0;background:none;color:#7c8986;font-size:22px;cursor:pointer}
+.close:hover{color:var(--paper)}
+.modal-body{padding:20px}
+.field{margin-bottom:15px}
+.field label{display:block;margin-bottom:6px;color:#71807c;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.field input,.field textarea,.field select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;outline:none;background:#152225;color:var(--paper);font:13px/1.5 var(--sans);resize:vertical}
+.field textarea{min-height:90px}
+.field input:focus,.field textarea:focus{border-color:rgba(217,174,97,.5);box-shadow:0 0 0 3px rgba(217,174,97,.06)}
+.modal-actions{display:flex;justify-content:flex-end;gap:9px;padding-top:5px}
+.reader-body{padding:20px;border:1px solid rgba(217,174,97,.14);border-radius:10px;background:#e8dfca;color:#29251e;font:15px/1.7 var(--serif);max-height:50vh;overflow-y:auto}
+.reader-kicker{color:var(--gold);font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;margin-bottom:10px}
+.reader-title{margin:0 0 4px;font:22px var(--serif)}
+.reader-meta{margin:0 0 18px;color:#687572;font-size:10px}
+
+/* Toast */
+.toast{position:fixed;right:25px;bottom:25px;z-index:30;display:none;padding:11px 14px;border:1px solid rgba(98,213,191,.3);border-radius:9px;background:#10221f;color:#a9ded4;box-shadow:0 16px 45px rgba(0,0,0,.4);font-size:11px}
+.toast.show{display:block;animation:toast .2s ease}
+@keyframes toast{from{opacity:0;transform:translateY(8px)}}
+
+/* Responsive */
+@media(max-width:1120px){.metrics{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}.right-stack{grid-template-columns:repeat(2,1fr)}.research-card{grid-column:1/-1}}
+@media(max-width:800px){.shell{grid-template-columns:76px minmax(0,1fr)}.sidebar{padding-inline:10px}.brand{justify-content:center;padding-inline:0}.brand-copy,.eyebrow,.nav button span:not(.count),.sidebar-foot{display:none}.nav button{justify-content:center;padding:11px 5px}.page{padding-inline:18px}.topbar{padding-inline:18px}.phases{grid-template-columns:repeat(3,1fr);row-gap:15px}}
+@media(max-width:600px){.shell{display:block}.sidebar{position:fixed;inset:auto 0 0;z-index:10;width:100%;height:66px;flex-direction:row;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:14px 14px 0 0;backdrop-filter:blur(18px)}.brand,.eyebrow,.sidebar-foot{display:none}.nav{width:100%;grid-template-columns:repeat(4,1fr)}.nav button{height:47px}.topbar{height:58px}.crumbs{display:none}.page{padding:22px 14px 96px}.metrics{grid-template-columns:1fr}.phases{grid-template-columns:repeat(2,1fr)}.right-stack{grid-template-columns:1fr}.research-card{grid-column:auto}.dashboard-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<header>
-  <h1>Behna Archive <span>Virtual Lab</span></h1>
-  <div class="hstats" id="corpusStat"></div>
-</header>
-<div class="app">
-  <!-- LEFT PANEL -->
-  <div class="col col-left">
-    <div class="tabs" id="leftTabs">
-      <div class="tab active" data-tab="launch">Launch</div>
-      <div class="tab" data-tab="runs">Runs</div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div class="brand-copy"><strong>Behna Virtual Lab</strong><span>مختبر بهنا الافتراضي</span></div>
     </div>
-
-    <!-- LAUNCH TAB -->
-    <div id="tab-launch">
-      <label>Research Topic</label>
-      <textarea id="topic" class="short" placeholder="e.g. Cinema financing and mercantile credit in interwar Alexandria"></textarea>
-
-      <label>Candidate Persona</label>
-      <textarea id="p_candidate" class="tall"></textarea>
-
-      <label>Advisor Persona</label>
-      <textarea id="p_advisor" class="tall"></textarea>
-
-      <label>Peer Template <span style="font-weight:400;text-transform:none;letter-spacing:0">(use {lens} placeholder)</span></label>
-      <textarea id="p_peer" class="short"></textarea>
-
-      <label>Peer Lenses</label>
-      <div id="lensContainer"></div>
-      <span class="add-lens" onclick="addLens()">+ Add lens</span>
-
-      <div class="form-row">
-        <div><label>Chapters</label><input type="number" id="nChapters" min="1" max="20" value="3"/></div>
+    <div class="eyebrow">Workspace</div>
+    <nav class="nav" id="mainNav">
+      <button class="active" data-page="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+        <span>Overview</span>
+      </button>
+      <button data-page="simulations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <span>Simulations</span><span class="count" id="runCount">0</span>
+      </button>
+      <button data-page="artifacts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>
+        <span>Artifacts</span><span class="count" id="artCount">0</span>
+      </button>
+      <button data-page="personas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3"/><path d="M3 20c.4-4 2.4-6 6-6s5.6 2 6 6M16 5c2.2.3 3.4 1.6 3.4 3.4S18.3 11.5 16 12M17 14c2.5.7 3.8 2.7 4 6"/></svg>
+        <span>Agent Personas</span>
+      </button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="corpus-mini">
+        <div class="row"><span>Corpus embedded</span><strong id="corpusLabel">— / —</strong></div>
+        <div class="progress"><i id="corpusBar" style="width:0%"></i></div>
+        <div class="row"><span>pgvector index</span><strong style="color:var(--teal)">Ready</strong></div>
       </div>
+      <div class="sys"><span class="dot"></span> All systems operational</div>
+    </div>
+  </aside>
 
-      <button class="btn-launch" id="launchBtn" onclick="createRun()">Launch Simulation</button>
+  <main>
+    <header class="topbar">
+      <div class="crumbs">Virtual Lab <span>/</span> <strong id="pageName">Overview</strong></div>
+      <div class="top-actions">
+        <button class="ghost-btn" id="pauseBtn" style="display:none">Pause run</button>
+        <button class="ghost-btn" id="stopBtn" style="display:none">Stop</button>
+        <button class="primary-btn" id="openLaunch">+ New simulation</button>
+      </div>
+    </header>
+
+    <!-- PAGE: OVERVIEW -->
+    <div class="page" id="page-overview">
+      <section class="intro">
+        <div>
+          <div class="kicker">Live research observatory</div>
+          <h1 id="greeting">Good morning, researcher.</h1>
+          <p id="introText">Launch a doctoral simulation to watch agents retrieve evidence, challenge assumptions, and assemble a defensible thesis from the Behna family archive.</p>
+        </div>
+        <div class="date-card"><b id="dateLabel"></b><span>Alexandria research time</span></div>
+      </section>
+
+      <section class="metrics" id="metricsRow">
+        <article class="metric gold">
+          <div class="metric-label"><span>Active phase</span></div>
+          <div class="metric-value" id="mPhase">—</div>
+          <div class="metric-note" id="mPhaseNote">No active run</div>
+        </article>
+        <article class="metric blue">
+          <div class="metric-label"><span>Agent turns</span></div>
+          <div class="metric-value" id="mTurns">0</div>
+          <div class="metric-note" id="mTurnsNote">—</div>
+        </article>
+        <article class="metric green">
+          <div class="metric-label"><span>Sources cited</span></div>
+          <div class="metric-value" id="mSources">0</div>
+          <div class="metric-note" id="mSourcesNote">—</div>
+        </article>
+        <article class="metric red">
+          <div class="metric-label"><span>Artifacts</span></div>
+          <div class="metric-value" id="mArtifacts">0</div>
+          <div class="metric-note" id="mArtifactsNote">—</div>
+        </article>
+      </section>
+
+      <section class="phase-panel" id="phasePanel" style="display:none">
+        <div class="section-head">
+          <h2>Doctoral lifecycle <span class="live" id="liveTag"><span class="dot"></span> Live</span></h2>
+          <span class="meta" id="runMeta"></span>
+        </div>
+        <div class="phases" id="phasesRow"></div>
+      </section>
+
+      <section class="dashboard-grid" id="dashGrid">
+        <article class="panel activity-panel">
+          <div class="panel-top">
+            <div><h2>Research activity</h2><p>Live agent reasoning, evidence retrieval, and advisor gates</p></div>
+            <span class="spacer"></span>
+          </div>
+          <div class="feed" id="feed">
+            <div class="empty-state">No activity yet. Launch a simulation to begin.</div>
+          </div>
+          <div class="composer" id="composer"><span class="typing"><i></i><i></i><i></i></span> <span id="composerText">Agent is thinking…</span></div>
+        </article>
+
+        <aside class="right-stack">
+          <article class="panel research-card" id="researchCard" style="display:none">
+            <div class="label">Current inquiry</div>
+            <h3 id="rcTopic"></h3>
+            <p id="rcSub"></p>
+            <div class="research-meta">
+              <div><b id="rcChapters">—</b><span>chapters</span></div>
+              <div><b id="rcLenses">—</b><span>agent lenses</span></div>
+              <div><b id="rcArtifacts">—</b><span>artifacts</span></div>
+            </div>
+          </article>
+
+          <article class="panel agents-panel" id="agentsPanel">
+            <h3>Agent presence</h3>
+            <div id="agentsList"></div>
+          </article>
+
+          <article class="panel artifacts-panel" id="artifactsPanel">
+            <div class="section-head" style="margin-bottom:10px"><h3 style="margin:0">Recent artifacts</h3></div>
+            <div id="artifactsList"><div class="empty-state" style="padding:20px 0">No artifacts yet.</div></div>
+            <a class="dl-all-btn" id="dlAllBtn" style="display:none">Download all artifacts (ZIP)</a>
+          </article>
+        </aside>
+      </section>
     </div>
 
-    <!-- RUNS TAB -->
-    <div id="tab-runs" style="display:none">
-      <div id="runlist"></div>
+    <!-- PAGE: SIMULATIONS (run list) -->
+    <div class="page" id="page-simulations" style="display:none">
+      <section class="intro"><div><div class="kicker">Simulation history</div><h1>Past runs</h1><p>Select a run to view its timeline and artifacts.</p></div></section>
+      <div id="simList"></div>
     </div>
-  </div>
 
-  <!-- CENTER: TIMELINE -->
-  <div class="col-center">
-    <div class="center-head">
-      <div class="phases" id="phaseRow"></div>
+    <!-- PAGE: ARTIFACTS (full list) -->
+    <div class="page" id="page-artifacts" style="display:none">
+      <section class="intro"><div><div class="kicker">Generated outputs</div><h1>All artifacts</h1><p>Browse and download every artifact produced across all runs.</p></div></section>
+      <div id="allArtifacts"></div>
     </div>
-    <div class="controls" id="controls" style="display:none">
-      <button class="b-run" onclick="ctrl('run')">Resume</button>
-      <button class="b-pause" onclick="ctrl('pause')">Pause</button>
-      <button class="b-stop" onclick="ctrl('stop')">Stop</button>
-    </div>
-    <div id="timeline" style="flex:1;overflow-y:auto;padding:16px 24px">
-      <div class="empty-state">Select a run or launch a new simulation<br/>to watch the academic lifecycle unfold.</div>
-    </div>
-  </div>
 
-  <!-- RIGHT: ARTIFACTS -->
-  <div class="col col-right">
-    <div class="stitle">Artifacts</div>
-    <a class="dl-all" id="dlAllBtn" style="display:none" onclick="downloadAll()">&#11015; Download All (ZIP)</a>
-    <div id="artifacts"><div class="empty-state" style="margin-top:40px">No artifacts yet.</div></div>
+    <!-- PAGE: PERSONAS -->
+    <div class="page" id="page-personas" style="display:none">
+      <section class="intro"><div><div class="kicker">Configuration</div><h1>Agent Personas</h1><p>Edit the default system prompts used when launching new simulations.</p></div></section>
+      <div id="personaEditor"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Launch modal -->
+<div class="modal" id="launchModal">
+  <div class="modal-card">
+    <div class="modal-head"><h2>Launch a doctoral simulation</h2><button class="close" id="closeLaunch">&times;</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Research topic</label><textarea id="fTopic" placeholder="e.g. Cinema financing and mercantile credit in interwar Alexandria"></textarea></div>
+      <div class="field"><label>Candidate persona</label><textarea id="fCandidate" style="min-height:120px"></textarea></div>
+      <div class="field"><label>Advisor persona</label><textarea id="fAdvisor" style="min-height:120px"></textarea></div>
+      <div class="field"><label>Peer template (use {lens} placeholder)</label><textarea id="fPeer" style="min-height:70px"></textarea></div>
+      <div class="field"><label>Peer lenses (one per line)</label><textarea id="fLenses" style="min-height:60px"></textarea></div>
+      <div class="field"><label>Chapters</label><select id="fChapters"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option><option value="10">10</option></select></div>
+      <div class="modal-actions"><button class="ghost-btn" id="cancelLaunch">Cancel</button><button class="primary-btn" id="doLaunch">Launch simulation</button></div>
+    </div>
   </div>
 </div>
 
-<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
-  <div class="sheet">
-    <button class="closex" onclick="closeModal()">&times;</button>
-    <div id="modalContent"></div>
+<!-- Reader modal -->
+<div class="modal" id="readerModal">
+  <div class="modal-card">
+    <div class="modal-head"><h2 id="readerHeadTitle">Document</h2><button class="close" id="closeReader">&times;</button></div>
+    <div class="modal-body" id="readerBody"></div>
   </div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script>
-const PHASES=[["phase1_pitch","Pitch"],["phase2_proposal","Proposal"],["phase3_archive","Archive"],
-              ["phase4_drafting","Drafting"],["phase5_colloquium","Colloquium"],["phase6_thesis","Thesis"]];
-let activeRun=null, lastEventId=0, poll=null;
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const PHASES=[["phase1_pitch","Pitch"],["phase2_proposal","Proposal"],["phase3_archive","Archive"],["phase4_drafting","Drafting"],["phase5_colloquium","Colloquium"],["phase6_thesis","Thesis"]];
+const AVATARS={candidate:"N",advisor:"A",peer:"P",system:"S"};
+let activeRun=null,lastEventId=0,poll=null,allEvents=[],currentPage='overview';
 
-// --- Tabs ---
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active');
-  document.getElementById('tab-launch').style.display=t.dataset.tab==='launch'?'':'none';
-  document.getElementById('tab-runs').style.display=t.dataset.tab==='runs'?'':'none';
+// --- Date ---
+const now=new Date();
+$('#dateLabel').textContent=now.toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'});
+const h=now.getHours();
+$('#greeting').textContent=h<12?'Good morning, researcher.':h<17?'Good afternoon, researcher.':'Good evening, researcher.';
+
+// --- Navigation ---
+$$('#mainNav button').forEach(btn=>btn.addEventListener('click',()=>{
+  $$('#mainNav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const pg=btn.dataset.page;
+  currentPage=pg;
+  ['overview','simulations','artifacts','personas'].forEach(p=>{
+    const el=$('#page-'+p);if(el)el.style.display=p===pg?'':'none';
+  });
+  $('#pageName').textContent=btn.querySelector('span:not(.count)')?.textContent||pg;
+  if(pg==='simulations')renderSimList();
+  if(pg==='artifacts')renderAllArtifacts();
+  if(pg==='personas')renderPersonaEditor();
 }));
 
-// --- Load defaults ---
-async function loadDefaults(){
-  const d=await jget('/api/personas/defaults');
-  document.getElementById('p_candidate').value=d.candidate;
-  document.getElementById('p_advisor').value=d.advisor;
-  document.getElementById('p_peer').value=d.peer_template;
-  document.getElementById('nChapters').value=d.n_chapters;
-  const c=document.getElementById('lensContainer'); c.innerHTML='';
-  d.peer_lenses.forEach(l=>addLensUI(l));
-}
-function addLensUI(text){
-  const c=document.getElementById('lensContainer');
-  const d=document.createElement('div');d.className='peer-lens';
-  d.innerHTML=`<textarea class="short">${escapeHtml(text||'')}</textarea><button class="rm" onclick="this.parentElement.remove()">&times;</button>`;
-  c.appendChild(d);
-}
-function addLens(){addLensUI('');}
-function getLenses(){return [...document.querySelectorAll('#lensContainer textarea')].map(t=>t.value.trim()).filter(Boolean);}
-
-// --- API helpers ---
-async function jget(u){return (await fetch(u)).json();}
-async function jpost(u,b){return (await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})})).json();}
+// --- API ---
+async function jget(u){return(await fetch(u)).json()}
+async function jpost(u,b){return(await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})})).json()}
 
 // --- Corpus ---
 async function refreshCorpus(){
   const s=await jget('/api/corpus_stats');
-  document.getElementById('corpusStat').textContent=`${s.embedded} / ${s.documents} documents embedded`;
+  $('#corpusLabel').textContent=`${s.embedded.toLocaleString()} / ${s.documents.toLocaleString()}`;
+  $('#corpusBar').style.width=Math.round(s.embedded/s.documents*100)+'%';
 }
 
 // --- Runs ---
 async function refreshRuns(){
   const runs=await jget('/api/runs');
-  const el=document.getElementById('runlist');
-  if(!runs.length){el.innerHTML='<div class="empty-state">No runs yet.</div>';return;}
-  el.innerHTML=runs.map(r=>`
-    <div class="runcard ${r.id===activeRun?'active':''}" onclick="openRun(${r.id})">
-      <div class="topic">${escapeHtml(r.topic)}</div>
-      <span class="badge ${r.status}">${r.status}</span>
-    </div>`).join('');
+  $('#runCount').textContent=runs.length;
+  if(!activeRun&&runs.length){
+    const live=runs.find(r=>r.status==='running')||runs[0];
+    openRun(live.id);
+  }
+  return runs;
 }
-
-async function createRun(){
-  const topic=document.getElementById('topic').value.trim();
-  if(!topic){document.getElementById('topic').focus();return;}
-  const body={
-    topic,
-    candidate:document.getElementById('p_candidate').value,
-    advisor:document.getElementById('p_advisor').value,
-    peer_template:document.getElementById('p_peer').value,
-    peer_lenses:getLenses(),
-    n_chapters:parseInt(document.getElementById('nChapters').value)||3,
-  };
-  document.getElementById('launchBtn').disabled=true;
-  const r=await jpost('/api/runs',body);
-  document.getElementById('launchBtn').disabled=false;
-  // Switch to runs tab
-  document.querySelectorAll('.tab')[1].click();
-  await refreshRuns(); openRun(r.id);
-}
-
-async function ctrl(action){if(activeRun){await jpost(`/api/runs/${activeRun}/control`,{action});}}
 
 function openRun(id){
-  activeRun=id; lastEventId=0;
-  document.getElementById('timeline').innerHTML='';
-  document.getElementById('controls').style.display='flex';
-  refreshRuns();
+  activeRun=id;lastEventId=0;allEvents=[];
+  $('#feed').innerHTML='';
   if(poll)clearInterval(poll);
-  tick(); poll=setInterval(tick,2500);
+  tick();poll=setInterval(tick,2500);
 }
 
 async function tick(){
   if(!activeRun)return;
   const d=await jget(`/api/runs/${activeRun}/events?after=${lastEventId}`);
-  renderPhases(d.run);
-  const tl=document.getElementById('timeline');
-  if(d.events.length){
-    if(lastEventId===0)tl.innerHTML='';
-    d.events.forEach(e=>{ tl.insertAdjacentHTML('beforeend', eventHtml(e)); lastEventId=e.id; });
-    tl.scrollTop=tl.scrollHeight;
-  }
-  refreshArtifacts();
-}
+  if(!d.run)return;
+  const run=d.run;
 
-function renderPhases(run){
-  if(!run)return;
+  // Controls
+  const isLive=run.status==='running';
+  $('#pauseBtn').style.display=isLive||run.status==='paused'?'':'none';
+  $('#stopBtn').style.display=isLive||run.status==='paused'?'':'none';
+  $('#pauseBtn').textContent=run.control==='pause'?'Resume run':'Pause run';
+  $('#liveTag').style.color=isLive?'var(--teal)':'var(--coral)';
+  $('#liveTag').innerHTML=isLive?'<span class="dot"></span> Live':run.status==='completed'?'Completed':'Paused';
+  if(isLive){$('#composer').style.display='';$('#composerText').textContent='Agent is reasoning…'}else{$('#composer').style.display='none'}
+
+  // Phase panel
+  $('#phasePanel').style.display='';
+  const config=run.config||{};
   const curIdx=PHASES.findIndex(p=>p[0]===run.phase);
-  let html=PHASES.map((p,i)=>{
-    let c='pchip'; if(run.phase==='completed'||i<curIdx)c+=' done'; if(i===curIdx)c+=' cur';
-    return `<span class="${c}">${p[1]}</span>`;
-  }).join('');
-  if(run.status==='running') html+=' <span class="live-dot">&#9679; live</span>';
-  document.getElementById('phaseRow').innerHTML=html;
+  let phHtml='';
+  PHASES.forEach((p,i)=>{
+    let cls='phase';if(run.phase==='completed'||i<curIdx)cls+=' done';if(i===curIdx)cls+=' current';
+    const node=cls.includes('done')?'✓':(i+1);
+    phHtml+=`<div class="${cls}"><div class="phase-node">${node}</div><div class="phase-copy"><b>${p[1]}</b><span>${cls.includes('done')?'Complete':cls.includes('current')?'In progress':'Pending'}</span></div></div>`;
+  });
+  $('#phasesRow').innerHTML=phHtml;
+  $('#runMeta').textContent=`Run #${run.id}`;
+
+  // Research card
+  $('#researchCard').style.display='';
+  $('#rcTopic').textContent=run.topic||'—';
+  $('#rcSub').textContent='';
+  $('#rcChapters').textContent=config.n_chapters||'3';
+  $('#rcLenses').textContent=(config.peer_lenses||[]).length||'3';
+
+  // Metrics
+  const phaseName=PHASES[curIdx]?PHASES[curIdx][1]:(run.phase==='completed'?'Complete':'—');
+  $('#mPhase').textContent=phaseName;
+  $('#mPhaseNote').innerHTML=run.phase==='completed'?'<em>All phases complete</em>':`<em>Phase ${curIdx+1} of 6</em>`;
+
+  // Events
+  if(d.events.length){
+    allEvents.push(...d.events);
+    const feed=$('#feed');
+    if(lastEventId===0)feed.innerHTML='';
+    d.events.forEach(e=>{feed.insertAdjacentHTML('beforeend',eventHtml(e));lastEventId=e.id});
+    feed.scrollTop=feed.scrollHeight;
+  }
+
+  // Counts
+  const docIds=new Set();
+  allEvents.forEach(e=>{if(e.meta&&e.meta.doc_ids)e.meta.doc_ids.forEach(d=>docIds.add(d))});
+  $('#mTurns').textContent=allEvents.filter(e=>e.agent!=='system').length;
+  $('#mSources').textContent=docIds.size;
+  const pct=docIds.size?((docIds.size/1201)*100).toFixed(1)+'%':'0%';
+  $('#mSourcesNote').innerHTML=`<em>${pct}</em> of corpus surfaced`;
+
+  // Artifacts
+  await refreshArtifacts();
+
+  // Agents
+  renderAgents(run,isLive);
 }
 
 function eventHtml(e){
   const meta=e.meta||{};
   let gate='';
-  if(e.kind==='gate') gate=meta.approved?'<span class="gate ok">Approved</span>':'<span class="gate no">Rejected</span>';
-  let docs='';
+  if(e.kind==='gate')gate=meta.approved?'<span class="approved-badge">Approved</span>':'<span class="rejected-badge">Rejected</span>';
+  let chips='';
   if(meta.doc_ids&&meta.doc_ids.length)
-    docs='<div class="docids">'+meta.doc_ids.slice(0,10).map(f=>`<a onclick="openDoc('${escapeAttr(f)}')">${escapeHtml(f)}</a>`).join('')+'</div>';
+    chips='<div class="chips">'+meta.doc_ids.slice(0,8).map(f=>`<button class="chip" onclick="openDoc('${esc(f)}')">${esc(f)}</button>`).join('')+'</div>';
   const t=e.ts?new Date(e.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
-  return `<div class="event ${e.agent}" data-kind="${e.kind}">
-    <div class="ehead"><span class="who ${e.agent}">${e.agent}${gate}</span><span class="etime">${t}</span></div>
-    <div class="etitle">${escapeHtml(e.title||'')}</div>
-    ${e.content?`<div class="ebody">${escapeHtml(e.content)}</div>`:''}${docs}</div>`;
+  const av=AVATARS[e.agent]||'S';
+  const kind=e.kind==='retrieval'?'retrieval':'';
+  return `<div class="event ${e.agent}" data-kind="${kind||e.kind}">
+    <div class="avatar">${av}</div>
+    <div>
+      <div class="event-head"><span class="agent">${esc(e.agent)}${gate}</span><span class="event-title">${esc(e.title||'')}</span><span class="time">${t}</span></div>
+      ${e.content?`<p class="body">${esc(e.content)}</p>`:''}${chips}
+    </div></div>`;
 }
 
-// --- Artifacts ---
 async function refreshArtifacts(){
   if(!activeRun)return;
   const arts=await jget(`/api/runs/${activeRun}/artifacts`);
-  const el=document.getElementById('artifacts');
-  const dlBtn=document.getElementById('dlAllBtn');
-  if(!arts.length){
-    el.innerHTML='<div class="empty-state" style="margin-top:40px">No artifacts yet.</div>';
-    dlBtn.style.display='none';return;
-  }
-  dlBtn.style.display='block';
-  el.innerHTML=arts.map(a=>`<div class="art-row">
-    <div class="art" onclick='openArtifact(${a.id})'>
-      <div class="k">${escapeHtml(a.kind)}${a.approved?'<span class="approved-tag">approved</span>':''}</div>
-      <div class="t">${escapeHtml(a.title)}</div>
-    </div>
-    <a class="dl-btn" href="/api/runs/${activeRun}/artifacts/${a.id}/download" title="Download">&#8681;</a>
-  </div>`).join('');
-  window._arts={}; arts.forEach(a=>window._arts[a.id]=a);
+  $('#mArtifacts').textContent=arts.length;
+  $('#rcArtifacts').textContent=arts.length;
+  $('#artCount').textContent=arts.length;
+  const el=$('#artifactsList');
+  if(!arts.length){el.innerHTML='<div class="empty-state" style="padding:20px 0">No artifacts yet.</div>';$('#dlAllBtn').style.display='none';return}
+  $('#dlAllBtn').style.display='block';
+  el.innerHTML=arts.slice(-5).reverse().map(a=>`<div class="artifact" onclick="openArtifact(${a.id})">
+    <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg></div>
+    <div><b>${esc(a.title)}</b><span>${esc(a.kind)} ${a.approved?'· approved':'· draft'}</span></div>
+    <span class="ver">v${a.version}</span></div>`).join('');
+  window._arts={};arts.forEach(a=>window._arts[a.id]=a);
 }
-function downloadAll(){
+
+function renderAgents(run,isLive){
+  const config=run.config||{};
+  const lenses=config.peer_lenses||['Marxist','Postcolonial','Quantitative'];
+  let html=`<div class="agent-row"><div class="tiny-avatar" style="color:var(--lapis)">NH</div><div><b>Nadia Halim</b><small>Candidate</small></div><span class="status ${isLive?'on':''}"></span></div>`;
+  html+=`<div class="agent-row"><div class="tiny-avatar" style="color:var(--gold)">RA</div><div><b>R. Ashworth</b><small>Advisor</small></div><span class="status ${isLive?'on':''}"></span></div>`;
+  lenses.forEach((l,i)=>{
+    const initials=l.substring(0,2).toUpperCase();
+    const colors=['var(--coral)','var(--violet)','var(--teal)'];
+    html+=`<div class="agent-row"><div class="tiny-avatar" style="color:${colors[i%3]}">${initials}</div><div><b>${esc(l)}</b><small>Peer</small></div><span class="status"></span></div>`;
+  });
+  $('#agentsList').innerHTML=html;
+}
+
+// --- Modals ---
+$('#openLaunch').onclick=()=>{$('#launchModal').classList.add('open');loadLaunchDefaults()};
+$('#closeLaunch').onclick=$('#cancelLaunch').onclick=()=>$('#launchModal').classList.remove('open');
+$('#closeReader').onclick=()=>$('#readerModal').classList.remove('open');
+$$('.modal').forEach(m=>m.addEventListener('click',ev=>{if(ev.target===m)m.classList.remove('open')}));
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')$$('.modal.open').forEach(m=>m.classList.remove('open'))});
+
+async function loadLaunchDefaults(){
+  const d=await jget('/api/personas/defaults');
+  $('#fCandidate').value=d.candidate;
+  $('#fAdvisor').value=d.advisor;
+  $('#fPeer').value=d.peer_template;
+  $('#fLenses').value=(d.peer_lenses||[]).join('\n');
+  $('#fChapters').value=d.n_chapters;
+}
+
+$('#doLaunch').onclick=async()=>{
+  const topic=$('#fTopic').value.trim();
+  if(!topic){$('#fTopic').focus();return}
+  const body={topic,candidate:$('#fCandidate').value,advisor:$('#fAdvisor').value,peer_template:$('#fPeer').value,peer_lenses:$('#fLenses').value.split('\n').map(s=>s.trim()).filter(Boolean),n_chapters:parseInt($('#fChapters').value)||3};
+  $('#doLaunch').disabled=true;
+  const r=await jpost('/api/runs',body);
+  $('#doLaunch').disabled=false;
+  $('#launchModal').classList.remove('open');
+  showToast('Simulation launched');
+  openRun(r.id);
+};
+
+// Controls
+$('#pauseBtn').onclick=async()=>{
   if(!activeRun)return;
-  window.location.href=`/api/runs/${activeRun}/artifacts/download-all`;
-}
+  const d=await jget(`/api/runs/${activeRun}/events?after=0`);
+  const action=d.run.control==='pause'?'run':'pause';
+  await jpost(`/api/runs/${activeRun}/control`,{action});
+  showToast(action==='pause'?'Simulation paused':'Simulation resumed');
+};
+$('#stopBtn').onclick=async()=>{
+  if(!activeRun)return;
+  await jpost(`/api/runs/${activeRun}/control`,{action:'stop'});
+  showToast('Simulation stopped');
+};
+$('#dlAllBtn').onclick=()=>{if(activeRun)window.location.href=`/api/runs/${activeRun}/artifacts/download-all`};
+
+// Artifact viewer
 function openArtifact(id){
-  const a=window._arts[id];if(!a)return;
-  document.getElementById('modalContent').innerHTML=`<h3>${escapeHtml(a.title)}</h3>
-    <div class="meta">${a.kind} &middot; v${a.version} &middot; ${a.approved?'approved':'draft'}</div>
-    <div class="body">${escapeHtml(a.content||'')}</div>`;
-  document.getElementById('modal').classList.add('show');
+  const a=window._arts?.[id];if(!a)return;
+  $('#readerHeadTitle').textContent=a.title;
+  $('#readerBody').innerHTML=`<div class="reader-kicker">${esc(a.kind)} · v${a.version} · ${a.approved?'approved':'draft'}</div><div class="reader-body">${esc(a.content||'')}</div><div style="margin-top:14px;text-align:right"><a href="/api/runs/${activeRun}/artifacts/${a.id}/download" class="ghost-btn" style="display:inline-block;text-decoration:none">Download .md</a></div>`;
+  $('#readerModal').classList.add('open');
 }
+
+// Doc viewer
 async function openDoc(fn){
   const d=await jget('/api/doc/'+encodeURIComponent(fn));
-  if(!d||!d.filename){return;}
-  document.getElementById('modalContent').innerHTML=`<h3>${escapeHtml(d.filename)}</h3>
-    <div class="meta">${escapeHtml(d.doc_type||'')} &middot; ${escapeHtml(d.creation_date||'n.d.')} &middot; ${escapeHtml(d.sender||'')} &rarr; ${escapeHtml(d.recipient||'')} &middot; ${escapeHtml(d.origin||'')} &middot; ${escapeHtml(d.languages||'')}</div>
-    <div class="body"><strong>Summary</strong>\n${escapeHtml(d.summary||'—')}\n\n<strong>Transcription</strong>\n${escapeHtml(d.transcription||'—')}\n\n<strong>English Translation</strong>\n${escapeHtml(d.translation||'—')}</div>`;
-  document.getElementById('modal').classList.add('show');
+  if(!d||!d.filename)return;
+  $('#readerHeadTitle').textContent=d.filename;
+  $('#readerBody').innerHTML=`<div class="reader-kicker">Behna Family Collection · AUC Rare Books and Special Collections Library</div><p class="reader-meta">${esc(d.doc_type||'')} · ${esc(d.creation_date||'n.d.')} · ${esc(d.sender||'')} → ${esc(d.recipient||'')} · ${esc(d.origin||'')} · ${esc(d.languages||'')}</p><div class="reader-body"><strong>Summary</strong>\n${esc(d.summary||'—')}\n\n<strong>Transcription</strong>\n${esc(d.transcription||'—')}\n\n<strong>English Translation</strong>\n${esc(d.translation||'—')}</div>`;
+  $('#readerModal').classList.add('open');
 }
-function closeModal(){document.getElementById('modal').classList.remove('show');}
-function escapeHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function escapeAttr(s){return(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 
-// --- Init ---
-loadDefaults();refreshCorpus();refreshRuns();
-setInterval(refreshCorpus,10000);setInterval(refreshRuns,5000);
+// Simulations page
+async function renderSimList(){
+  const runs=await jget('/api/runs');
+  const el=$('#simList');
+  if(!runs.length){el.innerHTML='<div class="empty-state">No simulations yet.</div>';return}
+  el.innerHTML=runs.map(r=>`<div class="artifact" onclick="openRun(${r.id});$$('#mainNav button')[0].click();" style="margin-bottom:8px">
+    <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+    <div><b>${esc(r.topic)}</b><span>${r.status} · ${new Date(r.created_at).toLocaleDateString()}</span></div>
+    <span class="ver">#${r.id}</span></div>`).join('');
+}
+
+// All artifacts page
+async function renderAllArtifacts(){
+  const runs=await jget('/api/runs');
+  let html='';
+  for(const r of runs.slice(0,10)){
+    const arts=await jget(`/api/runs/${r.id}/artifacts`);
+    if(!arts.length)continue;
+    html+=`<div style="margin-bottom:24px"><div style="color:var(--gold);font-size:9px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px">Run #${r.id} — ${esc(r.topic).substring(0,60)}</div>`;
+    arts.forEach(a=>{
+      window._arts=window._arts||{};window._arts[a.id]=a;
+      html+=`<div class="artifact" onclick="openArtifact(${a.id})" style="margin-bottom:6px"><div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg></div><div><b>${esc(a.title)}</b><span>${esc(a.kind)} ${a.approved?'· approved':'· draft'}</span></div><span class="ver">v${a.version}</span></div>`;
+    });
+    html+=`<a href="/api/runs/${r.id}/artifacts/download-all" class="dl-all-btn" style="margin-top:8px">Download all from this run (ZIP)</a></div>`;
+  }
+  $('#allArtifacts').innerHTML=html||'<div class="empty-state">No artifacts yet.</div>';
+}
+
+// Persona editor page
+async function renderPersonaEditor(){
+  const d=await jget('/api/personas/defaults');
+  $('#personaEditor').innerHTML=`
+    <div class="field"><label>Candidate system prompt</label><textarea id="peCandidate" style="min-height:180px">${esc(d.candidate)}</textarea></div>
+    <div class="field"><label>Advisor system prompt</label><textarea id="peAdvisor" style="min-height:180px">${esc(d.advisor)}</textarea></div>
+    <div class="field"><label>Peer template (use {lens} placeholder)</label><textarea id="pePeer" style="min-height:100px">${esc(d.peer_template)}</textarea></div>
+    <div class="field"><label>Peer lenses (one per line)</label><textarea id="peLenses" style="min-height:80px">${esc((d.peer_lenses||[]).join('\n'))}</textarea></div>
+    <p style="color:var(--muted);font-size:11px;margin-top:12px">These defaults pre-fill the launch modal. You can override them per simulation.</p>`;
+}
+
+// Toast
+let toastTimer;
+function showToast(msg){$('#toast').textContent=msg;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2400)}
+
+// Escape
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// Init
+refreshCorpus();refreshRuns();
+setInterval(refreshCorpus,15000);
+setInterval(()=>{if(currentPage==='overview')refreshRuns()},8000);
 </script>
 </body>
 </html>
