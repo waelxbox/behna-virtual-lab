@@ -170,6 +170,17 @@ main{min-width:0;display:flex;flex-direction:column}
 .dl-all-btn{display:block;margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.02);color:var(--lapis);font-size:11px;font-weight:600;text-align:center;cursor:pointer;transition:.16s;text-decoration:none}
 .dl-all-btn:hover{background:rgba(106,169,255,.06);border-color:rgba(106,169,255,.3)}
 
+/* Lens chips input */
+.lens-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.lens-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid rgba(217,174,97,.2);border-radius:7px;background:rgba(217,174,97,.06);color:var(--gold-soft);font-size:11px}
+.lens-chip .x{cursor:pointer;opacity:.5;font-size:14px;line-height:1}
+.lens-chip .x:hover{opacity:1;color:var(--coral)}
+.lens-add-row{display:flex;gap:6px}
+.lens-add-row input{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#152225;color:var(--paper);font-size:12px;outline:none}
+.lens-add-row input:focus{border-color:rgba(217,174,97,.5)}
+.lens-add-row button{padding:8px 12px;border:1px solid rgba(98,213,191,.3);border-radius:7px;background:rgba(98,213,191,.08);color:var(--teal);font-size:11px;font-weight:700;cursor:pointer}
+.lens-add-row button:hover{background:rgba(98,213,191,.15)}
+
 /* Empty state */
 .empty-state{text-align:center;padding:60px 20px;color:var(--muted);font:14px/1.7 var(--serif)}
 
@@ -360,7 +371,7 @@ main{min-width:0;display:flex;flex-direction:column}
       <div class="field"><label>Candidate persona</label><textarea id="fCandidate" style="min-height:120px"></textarea></div>
       <div class="field"><label>Advisor persona</label><textarea id="fAdvisor" style="min-height:120px"></textarea></div>
       <div class="field"><label>Peer template (use {lens} placeholder)</label><textarea id="fPeer" style="min-height:70px"></textarea></div>
-      <div class="field"><label>Peer lenses (one per line)</label><textarea id="fLenses" style="min-height:60px"></textarea></div>
+      <div class="field"><label>Peer lenses</label><div class="lens-list" id="fLensList"></div><div class="lens-add-row"><input id="fLensInput" placeholder="e.g. Marxist political economy" onkeydown="if(event.key==='Enter'){event.preventDefault();addLaunchLens()}"/><button type="button" onclick="addLaunchLens()">+ Add</button></div></div>
       <div class="field"><label>Chapters</label><select id="fChapters"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option><option value="10">10</option></select></div>
       <div class="modal-actions"><button class="ghost-btn" id="cancelLaunch">Cancel</button><button class="primary-btn" id="doLaunch">Launch simulation</button></div>
     </div>
@@ -552,19 +563,29 @@ $('#closeReader').onclick=()=>$('#readerModal').classList.remove('open');
 $$('.modal').forEach(m=>m.addEventListener('click',ev=>{if(ev.target===m)m.classList.remove('open')}));
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')$$('.modal.open').forEach(m=>m.classList.remove('open'))});
 
+let launchLenses=[];
+function renderLaunchLenses(){
+  $('#fLensList').innerHTML=launchLenses.map((l,i)=>`<div class="lens-chip"><span>${esc(l)}</span><span class="x" onclick="removeLaunchLens(${i})">&times;</span></div>`).join('');
+}
+function addLaunchLens(){
+  const inp=$('#fLensInput');const v=inp.value.trim();if(!v)return;
+  launchLenses.push(v);inp.value='';renderLaunchLenses();
+}
+function removeLaunchLens(i){launchLenses.splice(i,1);renderLaunchLenses()}
+
 async function loadLaunchDefaults(){
   const d=await jget('/api/personas/defaults');
   $('#fCandidate').value=d.candidate;
   $('#fAdvisor').value=d.advisor;
   $('#fPeer').value=d.peer_template;
-  $('#fLenses').value=(d.peer_lenses||[]).join('\n');
+  launchLenses=[...(d.peer_lenses||[])];renderLaunchLenses();
   $('#fChapters').value=d.n_chapters;
 }
 
 $('#doLaunch').onclick=async()=>{
   const topic=$('#fTopic').value.trim();
   if(!topic){$('#fTopic').focus();return}
-  const body={topic,candidate:$('#fCandidate').value,advisor:$('#fAdvisor').value,peer_template:$('#fPeer').value,peer_lenses:$('#fLenses').value.split('\n').map(s=>s.trim()).filter(Boolean),n_chapters:parseInt($('#fChapters').value)||3};
+  const body={topic,candidate:$('#fCandidate').value,advisor:$('#fAdvisor').value,peer_template:$('#fPeer').value,peer_lenses:launchLenses,n_chapters:parseInt($('#fChapters').value)||3};
   $('#doLaunch').disabled=true;
   const r=await jpost('/api/runs',body);
   $('#doLaunch').disabled=false;
@@ -588,12 +609,24 @@ $('#stopBtn').onclick=async()=>{
 };
 $('#dlAllBtn').onclick=()=>{if(activeRun)window.location.href=`/api/runs/${activeRun}/artifacts/download-all`};
 
-// Artifact viewer
+// Artifact viewer — opens in a new tab as a clean reader page
 function openArtifact(id){
   const a=window._arts?.[id];if(!a)return;
-  $('#readerHeadTitle').textContent=a.title;
-  $('#readerBody').innerHTML=`<div class="reader-kicker">${esc(a.kind)} · v${a.version} · ${a.approved?'approved':'draft'}</div><div class="reader-body">${esc(a.content||'')}</div><div style="margin-top:14px;text-align:right"><a href="/api/runs/${activeRun}/artifacts/${a.id}/download" class="ghost-btn" style="display:inline-block;text-decoration:none">Download .md</a></div>`;
-  $('#readerModal').classList.add('open');
+  const w=window.open('','_blank');
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>${esc(a.title)}</title>
+<style>body{margin:0;padding:40px;min-height:100vh;background:#0d1719;color:#f1ead9;font:16px/1.8 "Iowan Old Style","Palatino Linotype",Georgia,serif}
+.wrap{max-width:780px;margin:0 auto}
+.kicker{color:#d9ae61;font:800 10px/1 Inter,sans-serif;letter-spacing:.15em;text-transform:uppercase;margin-bottom:12px}
+h1{font-size:28px;font-weight:500;margin:0 0 6px;letter-spacing:-.01em}
+.meta{color:#8f9b98;font-size:12px;margin-bottom:24px;font-family:Inter,sans-serif}
+.content{padding:28px;border:1px solid rgba(222,212,183,.13);border-radius:12px;background:rgba(255,255,255,.02);white-space:pre-wrap;line-height:1.8}
+.dl{display:inline-block;margin-top:20px;padding:10px 16px;border:1px solid rgba(106,169,255,.3);border-radius:8px;color:#6aa9ff;text-decoration:none;font:600 12px/1 Inter,sans-serif}
+.dl:hover{background:rgba(106,169,255,.08)}</style></head>
+<body><div class="wrap"><div class="kicker">${esc(a.kind)} · v${a.version} · ${a.approved?'Approved':'Draft'}</div>
+<h1>${esc(a.title)}</h1><div class="meta">Run #${activeRun}</div>
+<div class="content">${esc(a.content||'')}</div>
+<a class="dl" href="/api/runs/${activeRun}/artifacts/${a.id}/download">Download as .md</a></div></body></html>`);
+  w.document.close();
 }
 
 // Doc viewer
@@ -636,13 +669,18 @@ async function renderAllArtifacts(){
 // Persona editor page
 async function renderPersonaEditor(){
   const d=await jget('/api/personas/defaults');
+  window._peLenses=[...(d.peer_lenses||[])];
   $('#personaEditor').innerHTML=`
     <div class="field"><label>Candidate system prompt</label><textarea id="peCandidate" style="min-height:180px">${esc(d.candidate)}</textarea></div>
     <div class="field"><label>Advisor system prompt</label><textarea id="peAdvisor" style="min-height:180px">${esc(d.advisor)}</textarea></div>
     <div class="field"><label>Peer template (use {lens} placeholder)</label><textarea id="pePeer" style="min-height:100px">${esc(d.peer_template)}</textarea></div>
-    <div class="field"><label>Peer lenses (one per line)</label><textarea id="peLenses" style="min-height:80px">${esc((d.peer_lenses||[]).join('\n'))}</textarea></div>
+    <div class="field"><label>Peer lenses</label><div class="lens-list" id="peLensList"></div><div class="lens-add-row"><input id="peLensInput" placeholder="Add a peer lens…" onkeydown="if(event.key==='Enter'){event.preventDefault();addPeLens()}"/><button type="button" onclick="addPeLens()">+ Add</button></div></div>
     <p style="color:var(--muted);font-size:11px;margin-top:12px">These defaults pre-fill the launch modal. You can override them per simulation.</p>`;
+  renderPeLenses();
 }
+function renderPeLenses(){$('#peLensList').innerHTML=window._peLenses.map((l,i)=>`<div class="lens-chip"><span>${esc(l)}</span><span class="x" onclick="removePeLens(${i})">&times;</span></div>`).join('')}
+function addPeLens(){const inp=$('#peLensInput');const v=inp.value.trim();if(!v)return;window._peLenses.push(v);inp.value='';renderPeLenses()}
+function removePeLens(i){window._peLenses.splice(i,1);renderPeLenses()}
 
 // Toast
 let toastTimer;
