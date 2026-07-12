@@ -344,7 +344,7 @@ main{min-width:0;display:flex;flex-direction:column}
 
     <!-- PAGE: SIMULATIONS (run list) -->
     <div class="page" id="page-simulations" style="display:none">
-      <section class="intro"><div><div class="kicker">Simulation history</div><h1>Past runs</h1><p>Select a run to view its timeline and artifacts.</p></div></section>
+      <section class="intro"><div><div class="kicker">Simulation history</div><h1>Past runs</h1><p>Select a run to view its timeline, artifacts, and the agent personas used.</p></div></section>
       <div id="simList"></div>
     </div>
 
@@ -356,7 +356,11 @@ main{min-width:0;display:flex;flex-direction:column}
 
     <!-- PAGE: PERSONAS -->
     <div class="page" id="page-personas" style="display:none">
-      <section class="intro"><div><div class="kicker">Configuration</div><h1>Agent Personas</h1><p>Edit the default system prompts used when launching new simulations.</p></div></section>
+      <section class="intro"><div><div class="kicker">Configuration & History</div><h1>Agent Personas</h1><p>View the personas used in each run, compare across runs, or edit the defaults for new simulations.</p></div></section>
+      <div id="personaRunList" style="margin-bottom:30px"></div>
+      <div style="border-top:1px solid var(--line);padding-top:24px;margin-top:24px">
+        <div style="color:var(--gold);font-size:9px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;margin-bottom:14px">Default personas (pre-fill new launches)</div>
+      </div>
       <div id="personaEditor"></div>
     </div>
   </main>
@@ -629,10 +633,38 @@ async function renderSimList(){
   const runs=await jget('/api/runs');
   const el=$('#simList');
   if(!runs.length){el.innerHTML='<div class="empty-state">No simulations yet.</div>';return}
-  el.innerHTML=runs.map(r=>`<div class="artifact" onclick="openRun(${r.id});$$('#mainNav button')[0].click();" style="margin-bottom:8px">
-    <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
-    <div><b>${esc(r.topic)}</b><span>${r.status} · ${new Date(r.created_at).toLocaleDateString()}</span></div>
-    <span class="ver">#${r.id}</span></div>`).join('');
+  el.innerHTML=runs.map(r=>{
+    const cfg=r.config||{};
+    const lenses=(cfg.peer_lenses||[]).join(', ')||'Default';
+    return `<div style="margin-bottom:14px;border:1px solid var(--line);border-radius:12px;padding:16px;background:rgba(255,255,255,.02);cursor:pointer" onclick="openRun(${r.id});$$('#mainNav button')[0].click();">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+        <div style="flex:1;min-width:0"><b style="display:block;color:var(--paper-2);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.topic)}</b><span style="color:#5f6c69;font-size:10px">${r.status} · ${new Date(r.created_at).toLocaleDateString()} · #${r.id}</span></div>
+        <button class="ghost-btn" onclick="event.stopPropagation();viewRunPersonas(${r.id})" style="font-size:10px;padding:6px 10px">View personas</button>
+      </div>
+      <div style="display:flex;gap:16px;color:var(--muted);font-size:10px">
+        <span>Chapters: <strong style="color:var(--paper-2)">${cfg.n_chapters||3}</strong></span>
+        <span>Lenses: <strong style="color:var(--paper-2)">${esc(lenses)}</strong></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function viewRunPersonas(rid){
+  const cfg=await jget(`/api/runs/${rid}/personas`);
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(3,7,8,.72);backdrop-filter:blur(12px)';
+  const lenses=(cfg.peer_lenses||[]).map(l=>`<div class="lens-chip" style="pointer-events:none"><span>${esc(l)}</span></div>`).join('');
+  modal.innerHTML=`<div style="width:min(780px,95%);max-height:85vh;overflow:auto;border:1px solid rgba(222,212,183,.23);border-radius:16px;background:#101a1c;box-shadow:0 40px 100px rgba(0,0,0,.55);padding:24px;scrollbar-width:thin;scrollbar-color:rgba(222,212,183,.13) transparent">
+    <div style="display:flex;align-items:center;margin-bottom:18px"><h2 style="margin:0;font:18px var(--serif);flex:1">Personas for Run #${rid}</h2><button onclick="this.closest('div[style*=fixed]').remove()" style="border:0;background:none;color:#7c8986;font-size:22px;cursor:pointer">&times;</button></div>
+    <div style="margin-bottom:18px"><div style="color:var(--lapis);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">Candidate</div><div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#152225;font:12px/1.6 var(--sans);color:var(--paper-2);white-space:pre-wrap;max-height:200px;overflow-y:auto">${esc(cfg.candidate||'Default')}</div></div>
+    <div style="margin-bottom:18px"><div style="color:var(--gold);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">Advisor</div><div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#152225;font:12px/1.6 var(--sans);color:var(--paper-2);white-space:pre-wrap;max-height:200px;overflow-y:auto">${esc(cfg.advisor||'Default')}</div></div>
+    <div style="margin-bottom:18px"><div style="color:var(--coral);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">Peer Template</div><div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:#152225;font:12px/1.6 var(--sans);color:var(--paper-2);white-space:pre-wrap;max-height:200px;overflow-y:auto">${esc(cfg.peer_template||'Default')}</div></div>
+    <div><div style="color:var(--violet);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">Peer Lenses</div><div class="lens-list">${lenses||'<span style="color:var(--muted);font-size:11px">Default</span>'}</div></div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()});
+  document.addEventListener('keydown',function handler(e){if(e.key==='Escape'){modal.remove();document.removeEventListener('keydown',handler)}});
+  document.body.appendChild(modal);
 }
 
 // All artifacts page
@@ -654,6 +686,20 @@ async function renderAllArtifacts(){
 
 // Persona editor page
 async function renderPersonaEditor(){
+  // Per-run persona history
+  const runs=await jget('/api/runs');
+  const prl=$('#personaRunList');
+  if(runs.length){
+    prl.innerHTML='<div style="color:var(--gold);font-size:9px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;margin-bottom:12px">Personas by run (click to inspect)</div>'+runs.map(r=>{
+      const cfg=r.config||{};
+      const lenses=(cfg.peer_lenses||[]).slice(0,4).join(', ');
+      return `<div class="artifact" onclick="viewRunPersonas(${r.id})" style="margin-bottom:6px"><div class="doc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3"/><path d="M3 20c.4-4 2.4-6 6-6s5.6 2 6 6"/></svg></div><div><b>Run #${r.id}: ${esc(r.topic).substring(0,50)}</b><span>${esc(lenses)} · ${cfg.n_chapters||3} chapters</span></div><span class="ver">${r.status}</span></div>`;
+    }).join('');
+  } else {
+    prl.innerHTML='<div class="empty-state" style="padding:20px 0">No runs yet.</div>';
+  }
+
+  // Default editor
   const d=await jget('/api/personas/defaults');
   window._peLenses=[...(d.peer_lenses||[])];
   $('#personaEditor').innerHTML=`

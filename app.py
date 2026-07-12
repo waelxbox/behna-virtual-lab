@@ -83,6 +83,15 @@ def api_events(rid: int, after: int = 0):
     return {"run": run, "events": rows}
 
 
+@app.get("/api/runs/{rid}/personas")
+def api_run_personas(rid: int):
+    """Return the full persona config used for a specific run."""
+    run = q("SELECT id, topic, config FROM lab.runs WHERE id=%s", (rid,), one=True)
+    if not run:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return run.get("config") or {}
+
+
 @app.get("/api/runs/{rid}/artifacts")
 def api_artifacts(rid: int):
     return q("SELECT id, kind, title, version, approved, created_at, content "
