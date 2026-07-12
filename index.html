@@ -609,24 +609,10 @@ $('#stopBtn').onclick=async()=>{
 };
 $('#dlAllBtn').onclick=()=>{if(activeRun)window.location.href=`/api/runs/${activeRun}/artifacts/download-all`};
 
-// Artifact viewer — opens in a new tab as a clean reader page
+// Artifact viewer — opens in the dedicated Tufte-style reader page
 function openArtifact(id){
   const a=window._arts?.[id];if(!a)return;
-  const w=window.open('','_blank');
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>${esc(a.title)}</title>
-<style>body{margin:0;padding:40px;min-height:100vh;background:#0d1719;color:#f1ead9;font:16px/1.8 "Iowan Old Style","Palatino Linotype",Georgia,serif}
-.wrap{max-width:780px;margin:0 auto}
-.kicker{color:#d9ae61;font:800 10px/1 Inter,sans-serif;letter-spacing:.15em;text-transform:uppercase;margin-bottom:12px}
-h1{font-size:28px;font-weight:500;margin:0 0 6px;letter-spacing:-.01em}
-.meta{color:#8f9b98;font-size:12px;margin-bottom:24px;font-family:Inter,sans-serif}
-.content{padding:28px;border:1px solid rgba(222,212,183,.13);border-radius:12px;background:rgba(255,255,255,.02);white-space:pre-wrap;line-height:1.8}
-.dl{display:inline-block;margin-top:20px;padding:10px 16px;border:1px solid rgba(106,169,255,.3);border-radius:8px;color:#6aa9ff;text-decoration:none;font:600 12px/1 Inter,sans-serif}
-.dl:hover{background:rgba(106,169,255,.08)}</style></head>
-<body><div class="wrap"><div class="kicker">${esc(a.kind)} · v${a.version} · ${a.approved?'Approved':'Draft'}</div>
-<h1>${esc(a.title)}</h1><div class="meta">Run #${activeRun}</div>
-<div class="content">${esc(a.content||'')}</div>
-<a class="dl" href="/api/runs/${activeRun}/artifacts/${a.id}/download">Download as .md</a></div></body></html>`);
-  w.document.close();
+  window.open(`/reader/${activeRun}/${a.id}`,'_blank');
 }
 
 // Doc viewer

@@ -140,6 +140,11 @@ def download_all_artifacts(rid: int):
     )
 
 
+@app.get("/reader/{rid}/{aid}", response_class=HTMLResponse)
+def reader_page(rid: int, aid: int):
+    return open(f"{BASE}/reader.html", encoding="utf-8").read()
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return open(f"{BASE}/index.html", encoding="utf-8").read()
