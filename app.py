@@ -46,9 +46,7 @@ def corpus_stats():
 @app.post("/api/runs")
 async def create_run(req: Request):
     body = await req.json()
-    topic = (body.get("topic") or "").strip()
-    if not topic:
-        return JSONResponse({"error": "topic required"}, status_code=400)
+    topic = (body.get("topic") or "").strip()  # optional: empty means candidate discovers their own
     config = {
         "candidate": (body.get("candidate") or personas.CANDIDATE).strip(),
         "advisor": (body.get("advisor") or personas.ADVISOR).strip(),
@@ -56,8 +54,9 @@ async def create_run(req: Request):
         "peer_lenses": body.get("peer_lenses") or personas.PEER_LENSES,
         "n_chapters": int(body.get("n_chapters") or 3),
     }
+    display_topic = topic or "(Candidate will discover their own topic)"
     row = q("INSERT INTO lab.runs (topic, persona, status, config) VALUES (%s,%s,'created',%s) RETURNING id",
-            (topic, "custom", Json(config)), one=True)
+            (display_topic, "custom", Json(config)), one=True)
     rid = row["id"]
     subprocess.Popen([f"{BASE}/venv/bin/python", f"{BASE}/worker.py", str(rid)],
                      cwd=BASE, stdout=open(f"{BASE}/run_{rid}.log", "w"),

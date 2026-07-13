@@ -85,7 +85,7 @@ main{min-width:0;display:flex;flex-direction:column}
 .section-head h2{margin:0;color:var(--paper-2);font-size:12px;letter-spacing:.02em}
 .section-head .meta{color:#65726f;font-size:10px}
 .live{display:inline-flex;align-items:center;gap:7px;margin-left:8px;color:var(--teal);font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
-.phases{display:grid;grid-template-columns:repeat(7,1fr)}
+.phases{display:grid;grid-template-columns:repeat(8,1fr)}
 .phase{position:relative;display:grid;grid-template-columns:30px 1fr;gap:9px;align-items:center;min-width:0;cursor:pointer}
 .phase:not(:last-child)::after{content:"";position:absolute;top:14px;left:30px;right:0;height:1px;background:var(--line)}
 .phase.done:not(:last-child)::after{background:linear-gradient(90deg,var(--teal),rgba(98,213,191,.23))}
@@ -395,7 +395,7 @@ main{min-width:0;display:flex;flex-direction:column}
 <script>
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
-const PHASES=[["phase1_pitch","Pitch"],["phase2_proposal","Proposal"],["phase3_outline","Outline"],["phase4_archive","Archive"],["phase5_drafting","Drafting"],["phase6_colloquium","Colloquium"],["phase7_thesis","Thesis"]];
+const PHASES=[["phase0_explore","Explore"],["phase1_pitch","Pitch"],["phase2_proposal","Proposal"],["phase3_outline","Outline"],["phase4_archive","Archive"],["phase5_drafting","Drafting"],["phase6_colloquium","Colloquium"],["phase7_thesis","Thesis"]];
 const AVATARS={candidate:"N",advisor:"A",peer:"P",system:"S"};
 let activeRun=null,lastEventId=0,poll=null,allEvents=[],currentPage='overview';
 

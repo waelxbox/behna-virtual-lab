@@ -88,15 +88,27 @@ def retrieve(query, k=10):
     return rows
 
 
+def random_sample(k=20):
+    """Retrieve a diverse random sample of documents from the Behna corpus."""
+    conn = db(); cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("""SELECT filename, doc_type, creation_date, sender, recipient, origin,
+                          languages, summary, transcription, translation
+                   FROM lab.behna_chunks ORDER BY random() LIMIT %s""", (k,))
+    rows = cur.fetchall(); cur.close(); conn.close()
+    return rows
+
+
 def format_sources(rows):
     out = []
     for r in rows:
         cite = r["filename"]
         body = (r.get("translation") or r.get("transcription") or "")[:1200]
+        sim = r.get("similarity")
+        sim_str = f"sim={sim:.3f}" if sim is not None else ""
         out.append(
             f"[DOC {cite}] type={r.get('doc_type')} date={r.get('creation_date')} "
-            f"sender={r.get('sender')} origin={r.get('origin')} "
-            f"sim={r.get('similarity'):.3f}\nSummary: {r.get('summary')}\nText: {body}"
+            f"sender={r.get('sender')} origin={r.get('origin')} {sim_str}\n"
+            f"Summary: {r.get('summary')}\nText: {body}"
         )
     return "\n\n".join(out)
 

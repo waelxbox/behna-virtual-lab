@@ -32,10 +32,13 @@ def run(run_id: int):
         g.N_CHAPTERS = int(config["n_chapters"])
 
     core.set_run(run_id, status="running", control="run")
-    core.log_event(run_id, "system", "status", "Simulation started", f"Topic: {topic}")
+    # If topic is the placeholder, pass empty so the explore phase discovers organically
+    initial_topic = "" if topic.startswith("(Candidate will discover") else topic
+    core.log_event(run_id, "system", "status", "Simulation started",
+                   f"Topic: {topic}" if initial_topic else "Topic: (Candidate will explore the archive and discover their own)")
     graph = build_graph()
     try:
-        graph.invoke({"run_id": run_id, "topic": topic},
+        graph.invoke({"run_id": run_id, "topic": initial_topic},
                      config={"recursion_limit": 100})
     except RuntimeError as e:
         if "STOPPED_BY_USER" in str(e):

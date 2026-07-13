@@ -1,6 +1,7 @@
 """The Behna Virtual Lab: a LangGraph state machine simulating the PhD lifecycle.
 
 Phases:
+  0 explore      Candidate browses a random sample of the archive and discovers a research interest.
   1 pitch        Candidate pitches a topic; Advisor accepts/refines.
   2 proposal     Iterative proposal loop, gated by Advisor [APPROVED].
   3 outline      Candidate outlines the chapter structure.
@@ -56,6 +57,48 @@ def _control_gate(run_id):
 
 
 # ---------------- Nodes ----------------
+def node_explore(state: LabState) -> LabState:
+    """Phase 0: The candidate browses a random sample of the archive and
+    organically discovers a research interest before pitching anything."""
+    rid = state["run_id"]; _control_gate(rid)
+    core.set_run(rid, phase="phase0_explore", status="running")
+    core.log_event(rid, "system", "status", "Phase 0 — Archival Exploration", phase="phase0_explore")
+
+    # Pull a diverse random sample from the corpus
+    docs = core.random_sample(k=20)
+    src_block = core.format_sources(docs)
+    doc_ids = [d["filename"] for d in docs]
+    core.log_event(rid, "system", "retrieval", "Random archival sample (20 documents)",
+                   src_block, phase="phase0_explore", meta={"doc_ids": doc_ids})
+
+    # Candidate reads and reflects
+    nudge = state.get("topic", "")
+    nudge_line = ""
+    if nudge:
+        nudge_line = f"\n\n(You have a loose thematic interest in: '{nudge}' — but let the documents surprise you.)"
+
+    reflection = core.agent_say(personas.CANDIDATE,
+        f"You have been given access to the Behna Archives for the first time. Below is a random sample of 20 documents "
+        f"from the collection. Read through them carefully. Notice patterns, curiosities, gaps, and contradictions. "
+        f"What strikes you? What questions emerge? What stories are hiding in this material?{nudge_line}\n\n"
+        f"DOCUMENTS:\n{src_block}\n\n"
+        f"Write a 2-3 paragraph reflection on what you found interesting, what patterns you noticed, "
+        f"and what research question is beginning to form in your mind. Do NOT pitch a formal topic yet — "
+        f"just think aloud as a curious researcher encountering this material for the first time.")
+    core.log_event(rid, "candidate", "message", "Archival exploration notes", reflection, phase="phase0_explore")
+    core.save_artifact(rid, "exploration", "Archival Exploration Notes", reflection)
+
+    # Now the candidate crystallizes a topic from their exploration
+    topic = core.agent_say(personas.CANDIDATE,
+        f"Based on your exploration notes below, formulate a single clear research topic (1-2 sentences) "
+        f"that you want to investigate further. This will become the seed for your doctoral pitch.\n\n"
+        f"YOUR NOTES:\n{reflection}")
+    state["topic"] = topic.strip()
+    core.log_event(rid, "candidate", "message", "Emergent research interest", topic, phase="phase0_explore")
+
+    return state
+
+
 def node_pitch(state: LabState) -> LabState:
     rid = state["run_id"]; _control_gate(rid)
     it = state.get("pitch_iter", 0) + 1
@@ -282,6 +325,7 @@ def node_thesis(state: LabState) -> LabState:
 
 def build_graph():
     g = StateGraph(LabState)
+    g.add_node("explore", node_explore)
     g.add_node("pitch", node_pitch)
     g.add_node("proposal", node_proposal)
     g.add_node("outline", node_outline)
@@ -290,7 +334,8 @@ def build_graph():
     g.add_node("colloquium", node_colloquium)
     g.add_node("thesis", node_thesis)
 
-    g.set_entry_point("pitch")
+    g.set_entry_point("explore")
+    g.add_edge("explore", "pitch")
     g.add_conditional_edges("pitch", route_pitch,
                             {"pitch": "pitch", "proposal": "proposal"})
     g.add_conditional_edges("proposal", route_proposal,
