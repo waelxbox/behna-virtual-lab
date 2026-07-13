@@ -18,6 +18,7 @@ from langgraph.graph import StateGraph, END
 
 import core, personas
 
+MAX_PITCH_ITERS = 2
 MAX_PROPOSAL_ITERS = 3
 N_CHAPTERS = 3            # kept modest for a tractable run; raise for full dissertation
 MAX_CHAPTER_REVISIONS = 2
@@ -26,6 +27,8 @@ MAX_CHAPTER_REVISIONS = 2
 class LabState(TypedDict, total=False):
     run_id: int
     topic: str
+    pitch: str
+    pitch_iter: int
     proposal: str
     proposal_iter: int
     outline: str
@@ -55,21 +58,38 @@ def _control_gate(run_id):
 # ---------------- Nodes ----------------
 def node_pitch(state: LabState) -> LabState:
     rid = state["run_id"]; _control_gate(rid)
+    it = state.get("pitch_iter", 0) + 1
+    state["pitch_iter"] = it
     core.set_run(rid, phase="phase1_pitch", status="running")
-    core.log_event(rid, "system", "status", "Phase 1 — Application & Conceptualization", phase="phase1_pitch")
+    core.log_event(rid, "system", "status", f"Phase 1 — Application & Conceptualization (attempt {it})", phase="phase1_pitch")
 
-    pitch = core.agent_say(personas.CANDIDATE,
-        f"Pitch a focused doctoral research question on the Behna Archives related to: '{state['topic']}'. "
-        "2-3 paragraphs: the question, why it matters, and the angle your theoretical lens brings.")
-    core.log_event(rid, "candidate", "message", "Research pitch", pitch, phase="phase1_pitch")
+    prior_pitch = state.get("pitch", "")
+    prompt = (f"Pitch a focused doctoral research question on the Behna Archives related to: '{state['topic']}'. "
+              "2-3 paragraphs: the question, why it matters, and the angle your theoretical lens brings.")
+    if prior_pitch:
+        prompt += (f"\n\nYour previous pitch was rejected. The advisor's critique is below; "
+                   f"rework your pitch to address their concerns.\n\nPREVIOUS PITCH:\n{prior_pitch}")
+
+    pitch = core.agent_say(personas.CANDIDATE, prompt)
+    state["pitch"] = pitch
+    core.log_event(rid, "candidate", "message", f"Research pitch (attempt {it})", pitch, phase="phase1_pitch")
 
     review = core.agent_say(personas.ADVISOR,
         f"The candidate pitched:\n\n{pitch}\n\nEvaluate the potential of this doctoral topic and either accept "
         "the student (refining the question) or send them back. Suggest theoretical refinements and readings. Remember your VERDICT line.")
-    core.log_event(rid, "advisor", "gate", "Advisor on pitch", review, phase="phase1_pitch",
-                   meta={"approved": _approved(review)})
-    state["topic"] = state["topic"]
+    ok = _approved(review)
+    core.log_event(rid, "advisor", "gate", f"Advisor on pitch (attempt {it})", review, phase="phase1_pitch",
+                   meta={"approved": ok})
+    state["_pitch_ok"] = ok
     return state
+
+
+def route_pitch(state: LabState) -> str:
+    if state.get("_pitch_ok"):
+        return "proposal"
+    if state.get("pitch_iter", 0) >= MAX_PITCH_ITERS:
+        return "proposal"   # advisor's critique stands; proceed to keep sim moving
+    return "pitch"
 
 
 def node_proposal(state: LabState) -> LabState:
@@ -271,7 +291,8 @@ def build_graph():
     g.add_node("thesis", node_thesis)
 
     g.set_entry_point("pitch")
-    g.add_edge("pitch", "proposal")
+    g.add_conditional_edges("pitch", route_pitch,
+                            {"pitch": "pitch", "proposal": "proposal"})
     g.add_conditional_edges("proposal", route_proposal,
                             {"proposal": "proposal", "outline": "outline"})
     g.add_edge("outline", "archive")
