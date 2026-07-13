@@ -79,7 +79,7 @@ def embed(text, retries=4):
     raise RuntimeError("embed failed")
 
 
-def retrieve(query, k=6):
+def retrieve(query, k=10):
     """Vector search restricted to the isolated lab table."""
     vec = embed(query)
     conn = db(); cur = conn.cursor(cursor_factory=RealDictCursor)
