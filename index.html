@@ -371,7 +371,14 @@ main{min-width:0;display:flex;flex-direction:column}
   <div class="modal-card">
     <div class="modal-head"><h2>Launch a doctoral simulation</h2><button class="close" id="closeLaunch">&times;</button></div>
     <div class="modal-body">
-      <div class="field"><label>Research topic</label><textarea id="fTopic" placeholder="e.g. Cinema financing and mercantile credit in interwar Alexandria"></textarea></div>
+      <div class="field" style="border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:16px">
+        <label style="color:var(--gold)">Experiment presets (12-run matrix)</label>
+        <select id="fPreset" style="width:100%;padding:10px;background:var(--ink-1);border:1px solid var(--line);color:var(--paper-2);border-radius:6px;font-size:13px">
+          <option value="">— Custom (manual configuration) —</option>
+        </select>
+        <p style="font-size:11px;color:#65726f;margin-top:6px" id="presetDesc">Select a preset to auto-fill all persona fields, or configure manually below.</p>
+      </div>
+      <div class="field"><label>Research topic <span style="font-size:10px;color:#65726f">(leave empty for candidate to discover their own)</span></label><textarea id="fTopic" placeholder="Optional: e.g. trade, family, legal — or leave blank"></textarea></div>
       <div class="field"><label>Candidate persona</label><textarea id="fCandidate" style="min-height:120px"></textarea></div>
       <div class="field"><label>Advisor persona</label><textarea id="fAdvisor" style="min-height:120px"></textarea></div>
       <div class="field"><label>Peer template (use {lens} placeholder)</label><textarea id="fPeer" style="min-height:70px"></textarea></div>
@@ -584,12 +591,35 @@ async function loadLaunchDefaults(){
   $('#fPeer').value=d.peer_template;
   launchLenses=[...(d.peer_lenses||[])];renderLaunchLenses();
   $('#fChapters').value=d.n_chapters;
+  // Load presets into dropdown
+  await loadPresets();
+}
+
+async function loadPresets(){
+  const sel=$('#fPreset');
+  sel.innerHTML='<option value="">\u2014 Custom (manual configuration) \u2014</option>';
+  const ps=await jget('/api/presets');
+  ps.forEach(p=>{
+    const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.label;
+    sel.appendChild(opt);
+  });
+  sel.onchange=async()=>{
+    const pid=sel.value;
+    if(!pid){$('#presetDesc').textContent='Select a preset to auto-fill all persona fields, or configure manually below.';return;}
+    const pr=await jget('/api/presets/'+pid);
+    $('#presetDesc').textContent=pr.description;
+    $('#fTopic').value=pr.topic||'';
+    $('#fCandidate').value=pr.candidate;
+    $('#fAdvisor').value=pr.advisor;
+    $('#fPeer').value=pr.peer_template;
+    launchLenses=[...(pr.peer_lenses||[])];renderLaunchLenses();
+    $('#fChapters').value=pr.n_chapters||3;
+  };
 }
 
 $('#doLaunch').onclick=async()=>{
   const topic=$('#fTopic').value.trim();
-  if(!topic){$('#fTopic').focus();return}
-  const body={topic,candidate:$('#fCandidate').value,advisor:$('#fAdvisor').value,peer_template:$('#fPeer').value,peer_lenses:launchLenses,n_chapters:parseInt($('#fChapters').value)||3};
+  const body={topic:topic||'',candidate:$('#fCandidate').value,advisor:$('#fAdvisor').value,peer_template:$('#fPeer').value,peer_lenses:launchLenses,n_chapters:parseInt($('#fChapters').value)||3};
   $('#doLaunch').disabled=true;
   const r=await jpost('/api/runs',body);
   $('#doLaunch').disabled=false;

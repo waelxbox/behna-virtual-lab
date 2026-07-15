@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg2.extras import RealDictCursor, Json
-import core, personas
+import core, personas, presets
 
 BASE = os.path.expanduser("~/behna_lab")
 app = FastAPI(title="Behna Virtual Lab")
@@ -15,6 +15,22 @@ def q(sql, args=(), one=False):
     cur.execute(sql, args)
     rows = cur.fetchall(); cur.close(); conn.close()
     return (rows[0] if rows else None) if one else rows
+
+
+# ---------- Experiment Presets ----------
+@app.get("/api/presets")
+def get_presets():
+    """Return the 12 pre-configured experiment persona sets."""
+    return [{"id": p["id"], "label": p["label"], "description": p["description"]} for p in presets.PRESETS]
+
+
+@app.get("/api/presets/{pid}")
+def get_preset(pid: int):
+    """Return full preset config by ID."""
+    for p in presets.PRESETS:
+        if p["id"] == pid:
+            return p
+    return JSONResponse({"error": "not found"}, status_code=404)
 
 
 # ---------- Persona defaults ----------
