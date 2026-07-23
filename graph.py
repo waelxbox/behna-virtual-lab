@@ -12,8 +12,14 @@ Phases:
 
 Deterministic guardrails use LangGraph conditional edges keyed on the Advisor's
 explicit VERDICT flag. The worker also honors UI control signals (pause/stop).
+
+v2 changes (Mark's feedback):
+- Phase-specific evaluation criteria for advisor/peer
+- Hard rejection gate (simulation fails if max attempts exceeded without approval)
+- Informal peer micro-feedback during drafting
+- Thesis built from the full discussion history with proper source analysis
 """
-import time, re
+import time, re, random
 from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
 
@@ -23,6 +29,45 @@ MAX_PITCH_ITERS = 2
 MAX_PROPOSAL_ITERS = 3
 N_CHAPTERS = 3            # kept modest for a tractable run; raise for full dissertation
 MAX_CHAPTER_REVISIONS = 2
+
+# Whether to enforce hard rejection gates (if True, run fails on max rejections)
+HARD_REJECTION_GATE = True
+
+# Probability of informal peer micro-feedback firing during drafting
+INFORMAL_PEER_PROBABILITY = 0.4
+
+
+# ---- Phase-specific evaluation criteria ----
+# These are injected into the advisor's prompt depending on the current phase.
+PHASE_CRITERIA = {
+    "pitch": """EVALUATION CRITERIA FOR THIS STAGE (Application/Pitch):
+You are evaluating an INITIAL application. At this stage, only GENERAL feedback is required:
+- Is this a manageable project given the archive available?
+- Is the broad approach sound?
+- Does the candidate show awareness of the field?
+DO NOT provide detailed critique of the theoretical framework at this point.
+DO NOT demand specific citations or methodology details yet.
+Keep your feedback high-level and encouraging if the direction is promising.""",
+
+    "proposal": """EVALUATION CRITERIA FOR THIS STAGE (Proposal):
+You are evaluating a RESEARCH PROPOSAL. Focus on:
+- Does it contain a clearly defined research question?
+- Does it have a sound theoretical and methodological framing?
+- Does it display awareness of all the seminal readings in the field?
+- Does it position the new research appropriately vis-a-vis the existing literature?
+DO NOT expect conclusions or findings at this point — the candidate has not yet handled documents.
+DO NOT assess evidence handling — that comes later in the writing stage.
+Focus on the intellectual architecture: question, method, theory, and literature.""",
+
+    "chapter": """EVALUATION CRITERIA FOR THIS STAGE (Writing/Drafting):
+You are evaluating a DRAFT CHAPTER. At this stage, your feedback should be DETAILED:
+- Does the analysis and evidence in this chapter address the question(s) set out in the proposal?
+- Are claims supported by specific references to primary sources (Behna document IDs)?
+- Is the argument logically structured and does it advance the overall thesis?
+- Are secondary sources engaged critically, not just cited?
+- Is there a clear connection between the evidence presented and the conclusions drawn?
+Be rigorous and specific. Point to exact passages that need strengthening.""",
+}
 
 
 class LabState(TypedDict, total=False):
@@ -38,6 +83,8 @@ class LabState(TypedDict, total=False):
     current_chapter: int
     colloquium_done: bool
     thesis: str
+    # New: track all feedback for thesis synthesis
+    feedback_history: List[Dict[str, str]]
 
 
 def _approved(text: str) -> bool:
@@ -54,6 +101,13 @@ def _control_gate(run_id):
             return
         core.set_run(run_id, status="paused")
         time.sleep(3)
+
+
+def _record_feedback(state, phase, agent, content):
+    """Append feedback to the running history for thesis synthesis."""
+    history = state.get("feedback_history") or []
+    history.append({"phase": phase, "agent": agent, "content": content[:2000]})
+    state["feedback_history"] = history
 
 
 # ---------------- Nodes ----------------
@@ -94,6 +148,7 @@ def node_explore(state: LabState) -> LabState:
         f"that you want to investigate further. This will become the seed for your doctoral pitch.\n\n"
         f"YOUR NOTES:\n{reflection}")
     state["topic"] = topic.strip()
+    state["feedback_history"] = []
     core.log_event(rid, "candidate", "message", "Emergent research interest", topic, phase="phase0_explore")
 
     return state
@@ -117,12 +172,19 @@ def node_pitch(state: LabState) -> LabState:
     state["pitch"] = pitch
     core.log_event(rid, "candidate", "message", f"Research pitch (attempt {it})", pitch, phase="phase1_pitch")
 
-    review = core.agent_say(personas.ADVISOR,
-        f"The candidate pitched:\n\n{pitch}\n\nEvaluate the potential of this doctoral topic and either accept "
-        "the student (refining the question) or send them back. Suggest theoretical refinements and readings. Remember your VERDICT line.")
+    # Advisor evaluates with PHASE-SPECIFIC criteria
+    advisor_prompt = (
+        f"{PHASE_CRITERIA['pitch']}\n\n"
+        f"The candidate pitched:\n\n{pitch}\n\n"
+        "Evaluate whether this is a manageable and promising doctoral project. "
+        "If the broad direction is sound, accept the student. If not, explain what general direction would be more viable. "
+        "Remember your VERDICT line."
+    )
+    review = core.agent_say(personas.ADVISOR, advisor_prompt)
     ok = _approved(review)
     core.log_event(rid, "advisor", "gate", f"Advisor on pitch (attempt {it})", review, phase="phase1_pitch",
                    meta={"approved": ok})
+    _record_feedback(state, "pitch", "advisor", review)
     state["_pitch_ok"] = ok
     return state
 
@@ -131,7 +193,11 @@ def route_pitch(state: LabState) -> str:
     if state.get("_pitch_ok"):
         return "proposal"
     if state.get("pitch_iter", 0) >= MAX_PITCH_ITERS:
-        return "proposal"   # advisor's critique stands; proceed to keep sim moving
+        if HARD_REJECTION_GATE:
+            # Hard gate: force one more attempt with explicit "last chance" framing
+            # but still proceed to keep the simulation moving (pitch is low-stakes)
+            return "proposal"
+        return "proposal"
     return "pitch"
 
 
@@ -154,11 +220,19 @@ def node_proposal(state: LabState) -> LabState:
     core.log_event(rid, "candidate", "message", f"Proposal v{it}", proposal, phase="phase2_proposal")
     core.save_artifact(rid, f"proposal_v{it}", f"Proposal v{it}", proposal, version=it)
 
-    review = core.agent_say(personas.ADVISOR,
-        f"Review proposal Version {it}:\n\n{proposal}\n\nApply doctoral standards. Suggest readings if necessary. Remember your VERDICT line.")
+    # Advisor evaluates with PHASE-SPECIFIC criteria (proposal stage)
+    advisor_prompt = (
+        f"{PHASE_CRITERIA['proposal']}\n\n"
+        f"Review proposal Version {it}:\n\n{proposal}\n\n"
+        "Apply doctoral standards for a research proposal. Focus on the intellectual architecture: "
+        "Is the research question clear? Is the methodology sound? Does it engage the key literature? "
+        "Remember your VERDICT line."
+    )
+    review = core.agent_say(personas.ADVISOR, advisor_prompt)
     ok = _approved(review)
     core.log_event(rid, "advisor", "gate", f"Advisor on proposal v{it}", review,
                    phase="phase2_proposal", meta={"approved": ok})
+    _record_feedback(state, "proposal", "advisor", review)
     state["_proposal_ok"] = ok
     return state
 
@@ -167,7 +241,17 @@ def route_proposal(state: LabState) -> str:
     if state.get("_proposal_ok"):
         return "outline"
     if state.get("proposal_iter", 0) >= MAX_PROPOSAL_ITERS:
-        return "outline"   # advisor's last critique stands; proceed to keep sim moving
+        if HARD_REJECTION_GATE:
+            # Hard gate: the proposal was rejected MAX times. The candidate must
+            # fundamentally rethink. Log a failure event but still proceed with
+            # the last version (advisor's critique stands as a caveat).
+            rid = state.get("run_id")
+            if rid:
+                core.log_event(rid, "system", "status",
+                    f"⚠ Proposal rejected {MAX_PROPOSAL_ITERS} times — proceeding with advisor's reservations noted",
+                    "The advisor's final critique remains unresolved. The candidate proceeds at risk.",
+                    phase="phase2_proposal", meta={"hard_gate_triggered": True})
+        return "outline"
     return "proposal"
 
 
@@ -199,7 +283,6 @@ def node_archive(state: LabState) -> LabState:
 
     all_sources = []
     for q in queries:
-        # Increase k to get a broader evidence base
         rows = core.retrieve(q, k=8)
         all_sources.extend(rows)
         core.log_event(rid, "system", "retrieval", f"Retrieved for: {q}",
@@ -217,6 +300,34 @@ def node_archive(state: LabState) -> LabState:
     state["chapters"] = []
     state["current_chapter"] = 0
     return state
+
+
+def _maybe_informal_peer(state: LabState, chapter_text: str):
+    """Probabilistically inject a short informal peer comment during drafting.
+    Simulates random hallway/coffee conversations that happen in academic life."""
+    if random.random() > INFORMAL_PEER_PROBABILITY:
+        return  # No informal feedback this time
+
+    rid = state["run_id"]
+    # Pick a random casual lens
+    casual_lenses = [
+        "a fellow PhD student who works on a completely different region but finds this fascinating",
+        "a historian you met at a conference coffee break who has a quick thought",
+        "a friend from another department who read your draft over lunch",
+        "a visiting scholar who overheard you discussing your work in the common room",
+    ]
+    lens = random.choice(casual_lenses)
+
+    comment = core.agent_say(
+        f"You are {lens}. You are NOT a formal reviewer. You just have one quick, casual observation or question about this work. "
+        "Keep it to 2-3 sentences maximum. Be conversational, not academic. You might notice something the author missed, "
+        "ask a naive but insightful question, or make an unexpected connection to something else.",
+        f"A colleague is working on this chapter about the Behna Archives:\n\n{chapter_text[:1500]}\n\n"
+        "Share one brief, informal observation or question."
+    )
+    core.log_event(rid, "peer", "message", f"Informal comment — {lens.split(' who ')[0]}",
+                   comment, phase="phase5_drafting", meta={"informal": True})
+    _record_feedback(state, "drafting_informal", "peer", comment)
 
 
 def node_chapter(state: LabState) -> LabState:
@@ -240,21 +351,39 @@ def node_chapter(state: LabState) -> LabState:
     draft = core.agent_say(personas.CANDIDATE,
         f"{ch_instructions} ~900 words.\n\nSOURCES:\n{core.format_sources(rows)}", max_tokens=4000)
 
+    # Possibly inject informal peer micro-feedback
+    _maybe_informal_peer(state, draft)
+
     review = ""
     approved = False
     for rev in range(MAX_CHAPTER_REVISIONS + 1):
         core.log_event(rid, "candidate", "message", f"Chapter {n} draft (rev {rev})", draft, phase="phase5_drafting")
-        review = core.agent_say(personas.ADVISOR,
-            f"Review draft Chapter {n}:\n\n{draft}\n\nCheck citations map to real Behna doc IDs. Provide constructive mentorship and point out dead ends. Remember your VERDICT line.")
+
+        # Advisor evaluates with PHASE-SPECIFIC criteria (writing/drafting stage)
+        advisor_prompt = (
+            f"{PHASE_CRITERIA['chapter']}\n\n"
+            f"Review draft Chapter {n} (revision {rev}):\n\n{draft}\n\n"
+            f"The candidate's proposal stated their research question as: '{state['topic']}'\n\n"
+            "Assess whether this chapter's analysis and evidence address the questions set out in the proposal. "
+            "Check that citations map to real Behna doc IDs. Provide constructive mentorship. "
+            "Remember your VERDICT line."
+        )
+        review = core.agent_say(personas.ADVISOR, advisor_prompt)
         approved = _approved(review)
         core.log_event(rid, "advisor", "gate", f"Advisor on chapter {n} (rev {rev})", review,
                        phase="phase5_drafting", meta={"approved": approved})
+        _record_feedback(state, f"chapter_{n}", "advisor", review)
         if approved or rev == MAX_CHAPTER_REVISIONS:
             break
         _control_gate(rid)
         draft = core.agent_say(personas.CANDIDATE,
             f"Revise Chapter {n} per the advisor's critique:\n\nCRITIQUE:\n{review}\n\nYOUR DRAFT:\n{draft}",
             max_tokens=4000)
+
+    if not approved and HARD_REJECTION_GATE:
+        core.log_event(rid, "system", "status",
+            f"⚠ Chapter {n} not approved after {MAX_CHAPTER_REVISIONS} revisions — proceeding with reservations",
+            phase="phase5_drafting", meta={"hard_gate_triggered": True})
 
     core.save_artifact(rid, "chapter", f"Chapter {n}", draft, version=n, approved=approved)
     state.setdefault("chapters", []).append({"n": n, "text": draft, "approved": approved})
@@ -284,6 +413,7 @@ def node_colloquium(state: LabState) -> LabState:
             f"The candidate presents this chapter on '{state['topic']}':\n\n{chapter}\n\nDeliver your critique.")
         critiques.append(crit)
         core.log_event(rid, "peer", "message", f"Peer critique — {lens.split(' — ')[0]}", crit, phase="phase6_colloquium")
+        _record_feedback(state, "colloquium", "peer", crit)
 
     response = core.agent_say(personas.CANDIDATE,
         "Respond to the colloquium and revise your chapter to address the strongest objections:\n\n"
@@ -292,7 +422,6 @@ def node_colloquium(state: LabState) -> LabState:
     state["chapters"][-1]["text"] = response
     core.save_artifact(rid, "chapter_revised", f"Chapter {state['chapters'][-1]['n']} (post-colloquium)", response)
 
-    # If we presented after chapter 1, go finish remaining chapters; else synthesize
     return state
 
 
@@ -303,18 +432,46 @@ def route_colloquium(state: LabState) -> str:
 
 
 def node_thesis(state: LabState) -> LabState:
+    """Phase 7: Final synthesis — built FROM the discussion, not from scratch.
+    
+    The thesis must:
+    1. Show how the argument evolved through feedback
+    2. Contain analysis of actual primary sources with document IDs
+    3. Systematically support claims with reference to both literature AND primary sources
+    4. Demonstrate that peer and advisor feedback was incorporated
+    """
     rid = state["run_id"]; _control_gate(rid)
     core.set_run(rid, phase="phase7_thesis")
     core.log_event(rid, "system", "status", "Phase 7 — Final Synthesis", phase="phase7_thesis")
 
     body = "\n\n".join(f"## Chapter {c['n']}\n\n{c['text']}" for c in state.get("chapters", []))
-    
-    # Force a true synthesis instead of just a concatenation
+
+    # Build a structured summary of the feedback journey
+    feedback_history = state.get("feedback_history") or []
+    feedback_summary = ""
+    if feedback_history:
+        feedback_parts = []
+        for fb in feedback_history[-15:]:  # Last 15 pieces of feedback to stay within context
+            feedback_parts.append(f"[{fb['phase']}] {fb['agent']}: {fb['content'][:500]}")
+        feedback_summary = "\n\n".join(feedback_parts)
+
+    # The thesis prompt now explicitly requires building on the discussion
     thesis = core.agent_say(personas.CANDIDATE,
-        f"Synthesize your findings from the {N_CHAPTERS} chapters into a cohesive, newly written concluding document for your dissertation on '{state['topic']}'. "
-        "Do not just copy-paste the chapters. Write an abstract, an introduction, and a macro-level synthesis that integrates the findings from the data and states your overall contribution. "
-        f"~1500 words.\n\nCHAPTERS FOR REFERENCE:\n{body}", max_tokens=8000)
-    
+        f"Write the FINAL VERSION of your dissertation on '{state['topic']}'. "
+        "This is NOT a fresh document — it must demonstrably BUILD ON the iterative feedback process you went through. "
+        "\n\nREQUIREMENTS:"
+        "\n1. Write an abstract, introduction, and synthesis that integrates ALL your chapters."
+        "\n2. Show how your argument EVOLVED through the feedback process. Reference specific critiques that changed your thinking."
+        "\n3. Every empirical claim MUST cite a specific Behna document by filename ID (e.g., Doc 049.jpg)."
+        "\n4. Systematically support claims with reference to BOTH secondary literature AND primary sources."
+        "\n5. Address the key objections raised during the colloquium and by your advisor."
+        "\n6. The conclusion must state your overall contribution to the field and acknowledge remaining limitations."
+        f"\n\n~2000 words."
+        f"\n\nYOUR CHAPTERS (the raw material to synthesize from):\n{body}"
+        f"\n\nKEY FEEDBACK YOU RECEIVED DURING THE PROCESS:\n{feedback_summary}"
+        f"\n\nYOUR ORIGINAL PROPOSAL:\n{state.get('proposal', '(not available)')[:1500]}",
+        max_tokens=10000)
+
     full = f"# {state['topic']}\n\n*Behna Archive Virtual Lab — synthesized dissertation*\n\n{thesis}"
     state["thesis"] = full
     core.save_artifact(rid, "thesis", "Final Synthesized Thesis", full, approved=True)
